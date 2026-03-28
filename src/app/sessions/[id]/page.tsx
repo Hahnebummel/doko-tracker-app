@@ -5,6 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
+type PlayerRelation = {
+  id: string;
+  display_name: string;
+};
+
 type Session = {
   id: string;
   session_date: string;
@@ -14,10 +19,7 @@ type Session = {
 
 type SessionParticipantRow = {
   player_id: string;
-  players: {
-    id: string;
-    display_name: string;
-  } | null;
+  players: PlayerRelation[] | null;
 };
 
 type EventRow = {
@@ -37,20 +39,14 @@ type EventRow = {
 type EventParticipantRow = {
   event_id: string;
   player_id: string;
-  players: {
-    id: string;
-    display_name: string;
-  } | null;
+  players: PlayerRelation[] | null;
 };
 
 type EventResultRow = {
   event_id: string;
   player_id: string;
   penalty_points: number;
-  players: {
-    id: string;
-    display_name: string;
-  } | null;
+  players: PlayerRelation[] | null;
 };
 
 type ScoreEntry = {
@@ -58,6 +54,10 @@ type ScoreEntry = {
   display_name: string;
   total_penalty_points: number;
 };
+
+function getPlayerName(players: PlayerRelation[] | null | undefined) {
+  return players?.[0]?.display_name || "Unbekannter Spieler";
+}
 
 function labelForGameKind(value: string | null) {
   if (value === "normal") return "Normalspiel";
@@ -191,14 +191,14 @@ export default function SessionDetailPage() {
         return;
       }
 
-      loadedEventParticipants = (eventParticipantData || []) as EventParticipantRow[];
-      loadedEventResults = (eventResultData || []) as EventResultRow[];
+      loadedEventParticipants = (eventParticipantData || []) as unknown as EventParticipantRow[];
+      loadedEventResults = (eventResultData || []) as unknown as EventResultRow[];
     }
 
     const sortedParticipants = ((participantData as unknown as SessionParticipantRow[]) || []).sort(
       (a, b) => {
-        const nameA = a.players?.display_name || "";
-        const nameB = b.players?.display_name || "";
+        const nameA = getPlayerName(a.players);
+        const nameB = getPlayerName(b.players);
         return nameA.localeCompare(nameB);
       }
     );
@@ -206,7 +206,7 @@ export default function SessionDetailPage() {
     const totalsMap = new Map<string, ScoreEntry>();
 
     sortedParticipants.forEach((participant) => {
-      const displayName = participant.players?.display_name || "Unbekannter Spieler";
+      const displayName = getPlayerName(participant.players);
       totalsMap.set(participant.player_id, {
         player_id: participant.player_id,
         display_name: displayName,
@@ -216,8 +216,7 @@ export default function SessionDetailPage() {
 
     loadedEventResults.forEach((result) => {
       const existing = totalsMap.get(result.player_id);
-      const displayName =
-        result.players?.display_name || existing?.display_name || "Unbekannter Spieler";
+      const displayName = getPlayerName(result.players) || existing?.display_name || "Unbekannter Spieler";
 
       if (existing) {
         existing.total_penalty_points += result.penalty_points || 0;
@@ -336,7 +335,7 @@ export default function SessionDetailPage() {
               <ul className="space-y-2">
                 {participants.map((participant) => (
                   <li key={participant.player_id} className="border rounded-xl p-3">
-                    {participant.players?.display_name || "Unbekannter Spieler"}
+                    {getPlayerName(participant.players)}
                   </li>
                 ))}
               </ul>
@@ -374,22 +373,25 @@ export default function SessionDetailPage() {
                   const participantsForEvent = eventParticipants
                     .filter((row) => row.event_id === event.id)
                     .sort((a, b) => {
-                      const nameA = a.players?.display_name || "";
-                      const nameB = b.players?.display_name || "";
+                      const nameA = getPlayerName(a.players);
+                      const nameB = getPlayerName(b.players);
                       return nameA.localeCompare(nameB);
                     });
 
                   const resultsForEvent = eventResults
                     .filter((row) => row.event_id === event.id)
                     .sort((a, b) => {
-                      const nameA = a.players?.display_name || "";
-                      const nameB = b.players?.display_name || "";
+                      const nameA = getPlayerName(a.players);
+                      const nameB = getPlayerName(b.players);
                       return nameA.localeCompare(nameB);
                     });
 
                   const soloPlayerName =
-                    participants.find((p) => p.player_id === event.solo_player_id)?.players
-                      ?.display_name || "—";
+                    participants.find((p) => p.player_id === event.solo_player_id)
+                      ? getPlayerName(
+                          participants.find((p) => p.player_id === event.solo_player_id)?.players
+                        )
+                      : "—";
 
                   const editHref =
                     event.event_type === "game"
@@ -469,7 +471,7 @@ export default function SessionDetailPage() {
                                 key={`${event.id}-${participant.player_id}`}
                                 className="border rounded-xl p-3"
                               >
-                                {participant.players?.display_name || "Unbekannter Spieler"}
+                                {getPlayerName(participant.players)}
                               </li>
                             ))}
                           </ul>
@@ -487,7 +489,7 @@ export default function SessionDetailPage() {
                                 key={`${event.id}-${result.player_id}`}
                                 className="border rounded-xl p-3 flex items-center justify-between gap-4"
                               >
-                                <span>{result.players?.display_name || "Unbekannter Spieler"}</span>
+                                <span>{getPlayerName(result.players)}</span>
                                 <span className="font-semibold">{result.penalty_points}</span>
                               </li>
                             ))}
