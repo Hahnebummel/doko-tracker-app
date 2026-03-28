@@ -63,9 +63,7 @@ export default function StatsPage() {
       }
 
       const { data: sessionParticipantsData, error: sessionParticipantsError } =
-        await supabase
-          .from("session_participants")
-          .select("session_id, player_id");
+        await supabase.from("session_participants").select("session_id, player_id");
 
       if (sessionParticipantsError) {
         setError(sessionParticipantsError.message);
@@ -84,9 +82,7 @@ export default function StatsPage() {
       }
 
       const { data: eventParticipantsData, error: eventParticipantsError } =
-        await supabase
-          .from("event_participants")
-          .select("event_id, player_id");
+        await supabase.from("event_participants").select("event_id, player_id");
 
       if (eventParticipantsError) {
         setError(eventParticipantsError.message);
@@ -174,46 +170,82 @@ export default function StatsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
-        <h1 className="text-3xl font-bold">Gesamtstatistik</h1>
-
-        <Link
-          href="/"
-          className="rounded-xl border px-4 py-2 font-medium hover:bg-white hover:text-black transition"
-        >
-          Zurück
-        </Link>
-      </div>
-
-      {loading && <p>Lade Statistik...</p>}
-
-      {error && <p className="text-red-600">Fehler: {error}</p>}
-
-      {!loading && !error && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-5 gap-4 font-semibold border rounded-2xl p-4">
-            <div>Spieler</div>
-            <div>Gesamtstrafpunkte</div>
-            <div>Gespielte Spiele</div>
-            <div>Inzidenzen</div>
-            <div>Anwesende Abende</div>
+    <main className="min-h-screen bg-neutral-950 text-neutral-50">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-neutral-400 mb-2">
+              Langzeit-Auswertung
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-bold">Gesamtstatistik</h1>
           </div>
 
-          {rows.map((row) => (
-            <div
-              key={row.player_id}
-              className="grid grid-cols-5 gap-4 border rounded-2xl p-4"
-            >
-              <div>{row.display_name}</div>
-              <div className="font-semibold">{row.total_penalty_points}</div>
-              <div>{row.games_played}</div>
-              <div>{row.incidents_involved}</div>
-              <div>{row.sessions_attended}</div>
-            </div>
-          ))}
+          <Link
+            href="/"
+            className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+          >
+            Zurück
+          </Link>
         </div>
-      )}
+
+        {loading && (
+          <div className="rounded-3xl border border-neutral-800 p-5 text-neutral-400">
+            Lade Statistik...
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-3xl border border-red-800/60 bg-red-950/40 p-5 text-red-300">
+            Fehler: {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="space-y-3">
+            <div className="hidden md:grid md:grid-cols-5 gap-4 rounded-3xl border border-neutral-800 px-5 py-4 text-sm text-neutral-400">
+              <div>Spieler</div>
+              <div>Gesamtstrafpunkte</div>
+              <div>Gespielte Spiele</div>
+              <div>Inzidenzen</div>
+              <div>Anwesende Abende</div>
+            </div>
+
+            {rows.map((row, index) => (
+              <div
+                key={row.player_id}
+                className="rounded-3xl border border-neutral-800 p-5"
+              >
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-neutral-400 w-6">{index + 1}.</span>
+                    <span className="text-lg font-semibold">{row.display_name}</span>
+                  </div>
+                  <span className="text-xl font-bold">{row.total_penalty_points}</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div className="rounded-2xl border border-neutral-800 p-4">
+                    <p className="text-neutral-400 mb-1">Spiele</p>
+                    <p>{row.games_played}</p>
+                  </div>
+                  <div className="rounded-2xl border border-neutral-800 p-4">
+                    <p className="text-neutral-400 mb-1">Inzidenzen</p>
+                    <p>{row.incidents_involved}</p>
+                  </div>
+                  <div className="rounded-2xl border border-neutral-800 p-4">
+                    <p className="text-neutral-400 mb-1">Abende</p>
+                    <p>{row.sessions_attended}</p>
+                  </div>
+                  <div className="rounded-2xl border border-neutral-800 p-4">
+                    <p className="text-neutral-400 mb-1">Strafpunkte</p>
+                    <p className="font-semibold">{row.total_penalty_points}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

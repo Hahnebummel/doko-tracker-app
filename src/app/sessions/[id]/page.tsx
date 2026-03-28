@@ -6,14 +6,8 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
 type PlayerRelation =
-  | {
-      id: string;
-      display_name: string;
-    }
-  | {
-      id: string;
-      display_name: string;
-    }[]
+  | { id: string; display_name: string }
+  | { id: string; display_name: string }[]
   | null;
 
 type Session = {
@@ -63,10 +57,18 @@ type ScoreEntry = {
 
 function getPlayerName(players: PlayerRelation) {
   if (!players) return "Unbekannter Spieler";
-  if (Array.isArray(players)) {
-    return players[0]?.display_name || "Unbekannter Spieler";
-  }
+  if (Array.isArray(players)) return players[0]?.display_name || "Unbekannter Spieler";
   return players.display_name || "Unbekannter Spieler";
+}
+
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("de-DE", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
 }
 
 function labelForGameKind(value: string | null) {
@@ -206,20 +208,15 @@ export default function SessionDetailPage() {
     }
 
     const sortedParticipants = ((participantData as unknown as SessionParticipantRow[]) || []).sort(
-      (a, b) => {
-        const nameA = getPlayerName(a.players);
-        const nameB = getPlayerName(b.players);
-        return nameA.localeCompare(nameB);
-      }
+      (a, b) => getPlayerName(a.players).localeCompare(getPlayerName(b.players))
     );
 
     const totalsMap = new Map<string, ScoreEntry>();
 
     sortedParticipants.forEach((participant) => {
-      const displayName = getPlayerName(participant.players);
       totalsMap.set(participant.player_id, {
         player_id: participant.player_id,
-        display_name: displayName,
+        display_name: getPlayerName(participant.players),
         total_penalty_points: 0,
       });
     });
@@ -286,241 +283,276 @@ export default function SessionDetailPage() {
   }
 
   return (
-    <main className="min-h-screen p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between gap-4 mb-8">
-        <h1 className="text-3xl font-bold">Spielabend</h1>
-        <Link
-          href="/"
-          className="rounded-xl border px-4 py-2 font-medium hover:bg-white hover:text-black transition"
-        >
-          Zurück
-        </Link>
-      </div>
+    <main className="min-h-screen bg-neutral-950 text-neutral-50">
+      <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-neutral-400 mb-2">
+              Spielabend
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-bold">
+              {session ? formatDate(session.session_date) : "Spielabend"}
+            </h1>
+          </div>
 
-      {loading && <p>Lade Spielabend...</p>}
-
-      {error && <p className="text-red-600">Fehler: {error}</p>}
-
-      {!loading && !error && session && sessionId && (
-        <div className="space-y-8">
-          <section className="border rounded-2xl p-5">
-            <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-              <h2 className="text-xl font-semibold">Basisdaten</h2>
-
-              <div className="flex gap-3 flex-wrap">
-                <Link
-                  href={`/sessions/${sessionId}/games/new`}
-                  className="rounded-xl border px-4 py-2 font-medium hover:bg-white hover:text-black transition"
-                >
-                  Spiel erfassen
-                </Link>
-                <Link
-                  href={`/sessions/${sessionId}/incidents/new`}
-                  className="rounded-xl border px-4 py-2 font-medium hover:bg-white hover:text-black transition"
-                >
-                  Inzidenz erfassen
-                </Link>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <p>
-                <span className="font-medium">Datum:</span> {session.session_date}
-              </p>
-              <p>
-                <span className="font-medium">Ort:</span> {session.location}
-              </p>
-              <p>
-                <span className="font-medium">Notiz:</span>{" "}
-                {session.notes && session.notes.trim() ? session.notes : "—"}
-              </p>
-            </div>
-          </section>
-
-          <section className="border rounded-2xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Anwesende Spieler</h2>
-
-            {participants.length === 0 ? (
-              <p>Keine Teilnehmer gefunden.</p>
-            ) : (
-              <ul className="space-y-2">
-                {participants.map((participant) => (
-                  <li key={participant.player_id} className="border rounded-xl p-3">
-                    {getPlayerName(participant.players)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="border rounded-2xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Tagesstand</h2>
-
-            {scoreboard.length === 0 ? (
-              <p>Keine Spieler gefunden.</p>
-            ) : (
-              <ul className="space-y-2">
-                {scoreboard.map((entry) => (
-                  <li
-                    key={entry.player_id}
-                    className="border rounded-xl p-3 flex items-center justify-between gap-4"
-                  >
-                    <span>{entry.display_name}</span>
-                    <span className="font-semibold">{entry.total_penalty_points}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="border rounded-2xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Ereignisse</h2>
-
-            {events.length === 0 ? (
-              <p>Noch keine Ereignisse erfasst.</p>
-            ) : (
-              <div className="space-y-4">
-                {events.map((event) => {
-                  const participantsForEvent = eventParticipants
-                    .filter((row) => row.event_id === event.id)
-                    .sort((a, b) => {
-                      const nameA = getPlayerName(a.players);
-                      const nameB = getPlayerName(b.players);
-                      return nameA.localeCompare(nameB);
-                    });
-
-                  const resultsForEvent = eventResults
-                    .filter((row) => row.event_id === event.id)
-                    .sort((a, b) => {
-                      const nameA = getPlayerName(a.players);
-                      const nameB = getPlayerName(b.players);
-                      return nameA.localeCompare(nameB);
-                    });
-
-                  const soloPlayerName =
-                    participants.find((p) => p.player_id === event.solo_player_id)
-                      ? getPlayerName(
-                          participants.find((p) => p.player_id === event.solo_player_id)?.players ||
-                            null
-                        )
-                      : "—";
-
-                  const editHref =
-                    event.event_type === "game"
-                      ? `/sessions/${sessionId}/games/${event.id}/edit`
-                      : `/sessions/${sessionId}/incidents/${event.id}/edit`;
-
-                  return (
-                    <div key={event.id} className="border rounded-2xl p-4 space-y-4">
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div>
-                          <p className="font-semibold">
-                            Ereignis {event.sequence_number}
-                            {event.event_type === "game" && event.game_number
-                              ? ` · Spiel ${event.game_number}`
-                              : ""}
-                          </p>
-                          <p className="opacity-80">
-                            {event.event_type === "game"
-                              ? labelForGameKind(event.game_kind)
-                              : labelForIncidentType(event.incident_type)}
-                          </p>
-                        </div>
-
-                        <div className="flex gap-3 flex-wrap">
-                          <Link
-                            href={editHref}
-                            className="rounded-xl border px-4 py-2 font-medium hover:bg-white hover:text-black transition"
-                          >
-                            Bearbeiten
-                          </Link>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteEvent(event.id)}
-                            disabled={deletingEventId === event.id}
-                            className="rounded-xl border px-4 py-2 font-medium hover:bg-white hover:text-black transition disabled:opacity-50"
-                          >
-                            {deletingEventId === event.id ? "Lösche..." : "Löschen"}
-                          </button>
-                        </div>
-                      </div>
-
-                      {event.event_type === "game" && (
-                        <div className="space-y-1 text-sm opacity-90">
-                          <p>
-                            <span className="font-medium">Bock-Stufe:</span>{" "}
-                            {labelForBockLevel(event.bock_level)}
-                          </p>
-                          <p>
-                            <span className="font-medium">Special Round:</span>{" "}
-                            {labelForSpecialRound(event.special_round_type)}
-                          </p>
-
-                          {event.game_kind === "solo" && (
-                            <>
-                              <p>
-                                <span className="font-medium">Solo-Art:</span>{" "}
-                                {labelForSoloType(event.solo_type)}
-                              </p>
-                              <p>
-                                <span className="font-medium">Solo-Spieler:</span>{" "}
-                                {soloPlayerName}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      <div>
-                        <p className="font-medium mb-2">Beteiligte Spieler</p>
-                        {participantsForEvent.length === 0 ? (
-                          <p className="opacity-80">Keine Beteiligten gefunden.</p>
-                        ) : (
-                          <ul className="space-y-2">
-                            {participantsForEvent.map((participant) => (
-                              <li
-                                key={`${event.id}-${participant.player_id}`}
-                                className="border rounded-xl p-3"
-                              >
-                                {getPlayerName(participant.players)}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-
-                      <div>
-                        <p className="font-medium mb-2">Strafpunkte</p>
-                        {resultsForEvent.length === 0 ? (
-                          <p className="opacity-80">Keine Strafpunkte gefunden.</p>
-                        ) : (
-                          <ul className="space-y-2">
-                            {resultsForEvent.map((result) => (
-                              <li
-                                key={`${event.id}-${result.player_id}`}
-                                className="border rounded-xl p-3 flex items-center justify-between gap-4"
-                              >
-                                <span>{getPlayerName(result.players)}</span>
-                                <span className="font-semibold">{result.penalty_points}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-
-                      <div className="text-sm opacity-80">
-                        <span className="font-medium">Notiz:</span>{" "}
-                        {event.notes && event.notes.trim() ? event.notes : "—"}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          <Link
+            href="/"
+            className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+          >
+            Zurück
+          </Link>
         </div>
-      )}
+
+        {loading && (
+          <div className="rounded-3xl border border-neutral-800 p-5 text-neutral-400">
+            Lade Spielabend...
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-3xl border border-red-800/60 bg-red-950/40 p-5 text-red-300">
+            Fehler: {error}
+          </div>
+        )}
+
+        {!loading && !error && session && sessionId && (
+          <div className="space-y-6">
+            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-semibold mb-1">Basisdaten</h2>
+                  <p className="text-neutral-400">Rahmendaten dieses Spielabends.</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href={`/sessions/${sessionId}/games/new`}
+                    className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+                  >
+                    Spiel erfassen
+                  </Link>
+                  <Link
+                    href={`/sessions/${sessionId}/incidents/new`}
+                    className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+                  >
+                    Inzidenz erfassen
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="rounded-2xl border border-neutral-800 p-4">
+                  <p className="text-sm text-neutral-400 mb-1">Datum</p>
+                  <p className="font-medium">{formatDate(session.session_date)}</p>
+                </div>
+                <div className="rounded-2xl border border-neutral-800 p-4">
+                  <p className="text-sm text-neutral-400 mb-1">Ort</p>
+                  <p className="font-medium">{session.location}</p>
+                </div>
+                <div className="rounded-2xl border border-neutral-800 p-4">
+                  <p className="text-sm text-neutral-400 mb-1">Notiz</p>
+                  <p className="font-medium">
+                    {session.notes && session.notes.trim() ? session.notes : "—"}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl sm:text-2xl font-semibold">Anwesende Spieler</h2>
+                <span className="text-sm text-neutral-400">{participants.length} Spieler</span>
+              </div>
+
+              {participants.length === 0 ? (
+                <p className="text-neutral-400">Keine Teilnehmer gefunden.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {participants.map((participant) => (
+                    <div
+                      key={participant.player_id}
+                      className="rounded-2xl border border-neutral-800 px-4 py-4"
+                    >
+                      {getPlayerName(participant.players)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl sm:text-2xl font-semibold">Tagesstand</h2>
+                <span className="text-sm text-neutral-400">
+                  sortiert nach wenigsten Strafpunkten
+                </span>
+              </div>
+
+              {scoreboard.length === 0 ? (
+                <p className="text-neutral-400">Keine Spieler gefunden.</p>
+              ) : (
+                <div className="space-y-3">
+                  {scoreboard.map((entry, index) => (
+                    <div
+                      key={entry.player_id}
+                      className="rounded-2xl border border-neutral-800 px-4 py-4 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-sm text-neutral-400 w-6">{index + 1}.</span>
+                        <span className="truncate">{entry.display_name}</span>
+                      </div>
+                      <span className="font-semibold text-lg">{entry.total_penalty_points}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl sm:text-2xl font-semibold">Ereignisse</h2>
+                <span className="text-sm text-neutral-400">{events.length} Einträge</span>
+              </div>
+
+              {events.length === 0 ? (
+                <p className="text-neutral-400">Noch keine Ereignisse erfasst.</p>
+              ) : (
+                <div className="space-y-4">
+                  {events.map((event) => {
+                    const participantsForEvent = eventParticipants
+                      .filter((row) => row.event_id === event.id)
+                      .sort((a, b) => getPlayerName(a.players).localeCompare(getPlayerName(b.players)));
+
+                    const resultsForEvent = eventResults
+                      .filter((row) => row.event_id === event.id)
+                      .sort((a, b) => getPlayerName(a.players).localeCompare(getPlayerName(b.players)));
+
+                    const soloPlayerName =
+                      participants.find((p) => p.player_id === event.solo_player_id)
+                        ? getPlayerName(
+                            participants.find((p) => p.player_id === event.solo_player_id)?.players || null
+                          )
+                        : "—";
+
+                    const editHref =
+                      event.event_type === "game"
+                        ? `/sessions/${sessionId}/games/${event.id}/edit`
+                        : `/sessions/${sessionId}/incidents/${event.id}/edit`;
+
+                    return (
+                      <div key={event.id} className="rounded-3xl border border-neutral-800 p-5 space-y-5">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                          <div>
+                            <p className="font-semibold text-lg">
+                              Ereignis {event.sequence_number}
+                              {event.event_type === "game" && event.game_number
+                                ? ` · Spiel ${event.game_number}`
+                                : ""}
+                            </p>
+                            <p className="text-neutral-400 mt-1">
+                              {event.event_type === "game"
+                                ? labelForGameKind(event.game_kind)
+                                : labelForIncidentType(event.incident_type)}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Link
+                              href={editHref}
+                              className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+                            >
+                              Bearbeiten
+                            </Link>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteEvent(event.id)}
+                              disabled={deletingEventId === event.id}
+                              className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium hover:bg-neutral-100 hover:text-neutral-900 transition disabled:opacity-50"
+                            >
+                              {deletingEventId === event.id ? "Lösche..." : "Löschen"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {event.event_type === "game" && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                            <div className="rounded-2xl border border-neutral-800 p-4">
+                              <p className="text-neutral-400 mb-1">Bock-Stufe</p>
+                              <p>{labelForBockLevel(event.bock_level)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-neutral-800 p-4">
+                              <p className="text-neutral-400 mb-1">Special Round</p>
+                              <p>{labelForSpecialRound(event.special_round_type)}</p>
+                            </div>
+
+                            {event.game_kind === "solo" && (
+                              <>
+                                <div className="rounded-2xl border border-neutral-800 p-4">
+                                  <p className="text-neutral-400 mb-1">Solo-Art</p>
+                                  <p>{labelForSoloType(event.solo_type)}</p>
+                                </div>
+                                <div className="rounded-2xl border border-neutral-800 p-4">
+                                  <p className="text-neutral-400 mb-1">Solo-Spieler</p>
+                                  <p>{soloPlayerName}</p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div>
+                            <p className="font-medium mb-3">Beteiligte Spieler</p>
+                            {participantsForEvent.length === 0 ? (
+                              <p className="text-neutral-400">Keine Beteiligten gefunden.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {participantsForEvent.map((participant) => (
+                                  <div
+                                    key={`${event.id}-${participant.player_id}`}
+                                    className="rounded-2xl border border-neutral-800 px-4 py-3"
+                                  >
+                                    {getPlayerName(participant.players)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="font-medium mb-3">Strafpunkte</p>
+                            {resultsForEvent.length === 0 ? (
+                              <p className="text-neutral-400">Keine Strafpunkte gefunden.</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {resultsForEvent.map((result) => (
+                                  <div
+                                    key={`${event.id}-${result.player_id}`}
+                                    className="rounded-2xl border border-neutral-800 px-4 py-3 flex items-center justify-between gap-4"
+                                  >
+                                    <span>{getPlayerName(result.players)}</span>
+                                    <span className="font-semibold">{result.penalty_points}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-neutral-800 p-4 text-sm">
+                          <p className="text-neutral-400 mb-1">Notiz</p>
+                          <p>{event.notes && event.notes.trim() ? event.notes : "—"}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
