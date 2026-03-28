@@ -3,26 +3,29 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
+import { buildPlayerOverviewStats } from "@/utils/player-overview-stats";
 
 type Player = {
   id: string;
   display_name: string;
 };
 
-type SessionParticipant = {
-  session_id: string;
-  player_id: string;
-};
-
 type SessionEvent = {
   id: string;
   session_id: string;
   event_type: "game" | "incident";
+  game_kind: "normal" | "solo" | "wedding_game" | null;
+  solo_type: string | null;
+  solo_player_id: string | null;
 };
 
 type EventParticipant = {
   event_id: string;
   player_id: string;
+  players?:
+    | { id?: string; display_name?: string | null }
+    | { id?: string; display_name?: string | null }[]
+    | null;
 };
 
 type EventResult = {
@@ -31,17 +34,19 @@ type EventResult = {
   penalty_points: number;
 };
 
-type StatRow = {
-  player_id: string;
-  display_name: string;
-  total_penalty_points: number;
-  games_played: number;
-  incidents_involved: number;
-  sessions_attended: number;
+type PlayerOverviewRow = {
+  playerId: string;
+  playerName: string;
+  totalPenaltyPoints: number;
+  gamesPlayed: number;
+  avgPenaltyPerGame: number | null;
+  solosPlayed: number;
+  soloWins: number;
+  soloWinRate: number | null;
 };
 
 export default function StatsPage() {
-  const [rows, setRows] = useState<StatRow[]>([]);
+  const [rows, setRows] = useState<PlayerOverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,18 +67,9 @@ export default function StatsPage() {
         return;
       }
 
-      const { data: sessionParticipantsData, error: sessionParticipantsError } =
-        await supabase.from("session_participants").select("session_id, player_id");
-
-      if (sessionParticipantsError) {
-        setError(sessionParticipantsError.message);
-        setLoading(false);
-        return;
-      }
-
       const { data: sessionEventsData, error: sessionEventsError } = await supabase
         .from("session_events")
-        .select("id, session_id, event_type");
+        .select("id, session_id, event_type, game_kind, solo_type, solo_player_id");
 
       if (sessionEventsError) {
         setError(sessionEventsError.message);
@@ -82,7 +78,14 @@ export default function StatsPage() {
       }
 
       const { data: eventParticipantsData, error: eventParticipantsError } =
-        await supabase.from("event_participants").select("event_id, player_id");
+        await supabase.from("event_participants").select(`
+          event_id,
+          player_id,
+          players (
+            id,
+            display_name
+          )
+        `);
 
       if (eventParticipantsError) {
         setError(eventParticipantsError.message);
@@ -101,65 +104,15 @@ export default function StatsPage() {
       }
 
       const players = (playersData || []) as Player[];
-      const sessionParticipants = (sessionParticipantsData || []) as SessionParticipant[];
       const sessionEvents = (sessionEventsData || []) as SessionEvent[];
       const eventParticipants = (eventParticipantsData || []) as EventParticipant[];
       const eventResults = (eventResultsData || []) as EventResult[];
 
-      const eventsById = new Map<string, SessionEvent>();
-      sessionEvents.forEach((event) => {
-        eventsById.set(event.id, event);
-      });
-
-      const sessionAttendanceMap = new Map<string, Set<string>>();
-      sessionParticipants.forEach((row) => {
-        if (!sessionAttendanceMap.has(row.player_id)) {
-          sessionAttendanceMap.set(row.player_id, new Set());
-        }
-        sessionAttendanceMap.get(row.player_id)!.add(row.session_id);
-      });
-
-      const gamesPlayedMap = new Map<string, number>();
-      const incidentsInvolvedMap = new Map<string, number>();
-
-      eventParticipants.forEach((row) => {
-        const event = eventsById.get(row.event_id);
-        if (!event) return;
-
-        if (event.event_type === "game") {
-          gamesPlayedMap.set(row.player_id, (gamesPlayedMap.get(row.player_id) || 0) + 1);
-        }
-
-        if (event.event_type === "incident") {
-          incidentsInvolvedMap.set(
-            row.player_id,
-            (incidentsInvolvedMap.get(row.player_id) || 0) + 1
-          );
-        }
-      });
-
-      const totalPenaltyMap = new Map<string, number>();
-      eventResults.forEach((row) => {
-        totalPenaltyMap.set(
-          row.player_id,
-          (totalPenaltyMap.get(row.player_id) || 0) + (row.penalty_points || 0)
-        );
-      });
-
-      const statRows: StatRow[] = players.map((player) => ({
-        player_id: player.id,
-        display_name: player.display_name,
-        total_penalty_points: totalPenaltyMap.get(player.id) || 0,
-        games_played: gamesPlayedMap.get(player.id) || 0,
-        incidents_involved: incidentsInvolvedMap.get(player.id) || 0,
-        sessions_attended: sessionAttendanceMap.get(player.id)?.size || 0,
-      }));
-
-      statRows.sort((a, b) => {
-        if (a.total_penalty_points !== b.total_penalty_points) {
-          return a.total_penalty_points - b.total_penalty_points;
-        }
-        return a.display_name.localeCompare(b.display_name);
+      const statRows = buildPlayerOverviewStats({
+        players,
+        sessionEvents,
+        eventParticipants,
+        eventResults,
       });
 
       setRows(statRows);
@@ -171,18 +124,18 @@ export default function StatsPage() {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-50">
-      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            <p className="mb-2 text-sm uppercase tracking-[0.2em] text-neutral-400">
               Langzeit-Auswertung
             </p>
-            <h1 className="text-3xl sm:text-4xl font-bold">Gesamtstatistik</h1>
+            <h1 className="text-3xl font-bold sm:text-4xl">Gesamtstatistik</h1>
           </div>
 
           <Link
             href="/"
-            className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+            className="rounded-2xl border border-neutral-700 px-4 py-3 text-center font-medium transition hover:bg-neutral-100 hover:text-neutral-900"
           >
             Zurück
           </Link>
@@ -201,49 +154,116 @@ export default function StatsPage() {
         )}
 
         {!loading && !error && (
-          <div className="space-y-3">
-            <div className="hidden md:grid md:grid-cols-5 gap-4 rounded-3xl border border-neutral-800 px-5 py-4 text-sm text-neutral-400">
-              <div>Spieler</div>
-              <div>Gesamtstrafpunkte</div>
-              <div>Gespielte Spiele</div>
-              <div>Inzidenzen</div>
-              <div>Anwesende Abende</div>
+          <section className="space-y-4">
+            <div>
+              <p className="text-sm text-neutral-400">
+                Kompakte Übersicht aller Spieler über alle erfassten Spielabende.
+              </p>
             </div>
 
-            {rows.map((row, index) => (
-              <div
-                key={row.player_id}
-                className="rounded-3xl border border-neutral-800 p-5"
-              >
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-neutral-400 w-6">{index + 1}.</span>
-                    <span className="text-lg font-semibold">{row.display_name}</span>
-                  </div>
-                  <span className="text-xl font-bold">{row.total_penalty_points}</span>
-                </div>
+            <div className="grid gap-3 md:hidden">
+              {rows.map((row, index) => (
+                <div
+                  key={row.playerId}
+                  className="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 text-sm text-neutral-400">
+                        {index + 1}.
+                      </span>
+                      <span className="text-lg font-semibold">{row.playerName}</span>
+                    </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div className="rounded-2xl border border-neutral-800 p-4">
-                    <p className="text-neutral-400 mb-1">Spiele</p>
-                    <p>{row.games_played}</p>
+                    <span className="rounded-full border border-neutral-700 px-3 py-1 text-sm font-medium text-neutral-200">
+                      {row.totalPenaltyPoints} Punkte
+                    </span>
                   </div>
-                  <div className="rounded-2xl border border-neutral-800 p-4">
-                    <p className="text-neutral-400 mb-1">Inzidenzen</p>
-                    <p>{row.incidents_involved}</p>
-                  </div>
-                  <div className="rounded-2xl border border-neutral-800 p-4">
-                    <p className="text-neutral-400 mb-1">Abende</p>
-                    <p>{row.sessions_attended}</p>
-                  </div>
-                  <div className="rounded-2xl border border-neutral-800 p-4">
-                    <p className="text-neutral-400 mb-1">Strafpunkte</p>
-                    <p className="font-semibold">{row.total_penalty_points}</p>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-2xl border border-neutral-800 p-4">
+                      <p className="mb-1 text-neutral-400">Spiele</p>
+                      <p className="font-medium">{row.gamesPlayed}</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-neutral-800 p-4">
+                      <p className="mb-1 text-neutral-400">Ø / Spiel</p>
+                      <p className="font-medium">
+                        {row.avgPenaltyPerGame !== null
+                          ? row.avgPenaltyPerGame.toFixed(1)
+                          : "—"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-neutral-800 p-4">
+                      <p className="mb-1 text-neutral-400">Soli</p>
+                      <p className="font-medium">{row.solosPlayed}</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-neutral-800 p-4">
+                      <p className="mb-1 text-neutral-400">Solo-Quote</p>
+                      <p className="font-medium">
+                        {row.soloWinRate !== null
+                          ? `${Math.round(row.soloWinRate)} %`
+                          : "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-hidden rounded-3xl border border-neutral-800 md:block">
+              <div className="grid grid-cols-6 gap-4 border-b border-neutral-800 bg-neutral-900/80 px-5 py-4 text-sm text-neutral-400">
+                <div>Spieler</div>
+                <div className="text-right">Strafpunkte</div>
+                <div className="text-right">Spiele</div>
+                <div className="text-right">Ø / Spiel</div>
+                <div className="text-right">Soli</div>
+                <div className="text-right">Solo-Quote</div>
               </div>
-            ))}
-          </div>
+
+              <div className="divide-y divide-neutral-800">
+                {rows.map((row, index) => (
+                  <div
+                    key={row.playerId}
+                    className="grid grid-cols-6 gap-4 px-5 py-4 text-sm hover:bg-neutral-900/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 text-neutral-500">{index + 1}.</span>
+                      <span className="font-medium text-neutral-100">
+                        {row.playerName}
+                      </span>
+                    </div>
+
+                    <div className="text-right font-semibold text-neutral-100">
+                      {row.totalPenaltyPoints}
+                    </div>
+
+                    <div className="text-right text-neutral-300">
+                      {row.gamesPlayed}
+                    </div>
+
+                    <div className="text-right text-neutral-300">
+                      {row.avgPenaltyPerGame !== null
+                        ? row.avgPenaltyPerGame.toFixed(1)
+                        : "—"}
+                    </div>
+
+                    <div className="text-right text-neutral-300">
+                      {row.solosPlayed}
+                    </div>
+
+                    <div className="text-right text-neutral-300">
+                      {row.soloWinRate !== null
+                        ? `${Math.round(row.soloWinRate)} %`
+                        : "—"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
       </div>
     </main>
