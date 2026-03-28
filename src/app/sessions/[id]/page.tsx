@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
 type PlayerRelation =
@@ -108,6 +108,7 @@ function labelForIncidentType(value: string | null) {
 
 export default function SessionDetailPage() {
   const params = useParams();
+  const router = useRouter();
 
   const sessionId = useMemo(() => {
     const rawId = params?.id;
@@ -125,6 +126,7 @@ export default function SessionDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [deletingSession, setDeletingSession] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function loadSessionData() {
@@ -282,6 +284,84 @@ export default function SessionDetailPage() {
     await loadSessionData();
   }
 
+  async function handleDeleteSession() {
+    if (!sessionId) {
+      setError("Keine gültige Session-ID gefunden.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Möchtest du diesen Spielabend wirklich löschen? Alle Ereignisse, Beteiligungen und Strafpunkte dieses Abends werden ebenfalls dauerhaft entfernt."
+    );
+
+    if (!confirmed) return;
+
+    setDeletingSession(true);
+    setError(null);
+
+    const eventIds = events.map((event) => event.id);
+
+    if (eventIds.length > 0) {
+      const { error: deleteEventResultsError } = await supabase
+        .from("event_results")
+        .delete()
+        .in("event_id", eventIds);
+
+      if (deleteEventResultsError) {
+        setDeletingSession(false);
+        setError(deleteEventResultsError.message);
+        return;
+      }
+
+      const { error: deleteEventParticipantsError } = await supabase
+        .from("event_participants")
+        .delete()
+        .in("event_id", eventIds);
+
+      if (deleteEventParticipantsError) {
+        setDeletingSession(false);
+        setError(deleteEventParticipantsError.message);
+        return;
+      }
+
+      const { error: deleteEventsError } = await supabase
+        .from("session_events")
+        .delete()
+        .eq("session_id", sessionId);
+
+      if (deleteEventsError) {
+        setDeletingSession(false);
+        setError(deleteEventsError.message);
+        return;
+      }
+    }
+
+    const { error: deleteSessionParticipantsError } = await supabase
+      .from("session_participants")
+      .delete()
+      .eq("session_id", sessionId);
+
+    if (deleteSessionParticipantsError) {
+      setDeletingSession(false);
+      setError(deleteSessionParticipantsError.message);
+      return;
+    }
+
+    const { error: deleteSessionError } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("id", sessionId);
+
+    setDeletingSession(false);
+
+    if (deleteSessionError) {
+      setError(deleteSessionError.message);
+      return;
+    }
+
+    router.push("/");
+  }
+
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-50">
       <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
@@ -337,6 +417,14 @@ export default function SessionDetailPage() {
                   >
                     Inzidenz erfassen
                   </Link>
+                  <button
+                    type="button"
+                    onClick={handleDeleteSession}
+                    disabled={deletingSession}
+                    className="rounded-2xl border border-red-700 px-4 py-3 font-medium text-red-300 transition hover:bg-red-100 hover:text-red-900 disabled:opacity-50"
+                  >
+                    {deletingSession ? "Lösche Spielabend..." : "Spielabend löschen"}
+                  </button>
                 </div>
               </div>
 
@@ -467,7 +555,7 @@ export default function SessionDetailPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteEvent(event.id)}
-                              disabled={deletingEventId === event.id}
+                              disabled={deletingEventId === event.id || deletingSession}
                               className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium hover:bg-neutral-100 hover:text-neutral-900 transition disabled:opacity-50"
                             >
                               {deletingEventId === event.id ? "Lösche..." : "Löschen"}
