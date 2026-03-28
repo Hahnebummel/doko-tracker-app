@@ -5,10 +5,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
-type PlayerRelation = {
-  id: string;
-  display_name: string;
-};
+type PlayerRelation =
+  | {
+      id: string;
+      display_name: string;
+    }
+  | {
+      id: string;
+      display_name: string;
+    }[]
+  | null;
 
 type Session = {
   id: string;
@@ -19,7 +25,7 @@ type Session = {
 
 type SessionParticipantRow = {
   player_id: string;
-  players: PlayerRelation[] | null;
+  players: PlayerRelation;
 };
 
 type EventRow = {
@@ -39,14 +45,14 @@ type EventRow = {
 type EventParticipantRow = {
   event_id: string;
   player_id: string;
-  players: PlayerRelation[] | null;
+  players: PlayerRelation;
 };
 
 type EventResultRow = {
   event_id: string;
   player_id: string;
   penalty_points: number;
-  players: PlayerRelation[] | null;
+  players: PlayerRelation;
 };
 
 type ScoreEntry = {
@@ -55,8 +61,12 @@ type ScoreEntry = {
   total_penalty_points: number;
 };
 
-function getPlayerName(players: PlayerRelation[] | null | undefined) {
-  return players?.[0]?.display_name || "Unbekannter Spieler";
+function getPlayerName(players: PlayerRelation) {
+  if (!players) return "Unbekannter Spieler";
+  if (Array.isArray(players)) {
+    return players[0]?.display_name || "Unbekannter Spieler";
+  }
+  return players.display_name || "Unbekannter Spieler";
 }
 
 function labelForGameKind(value: string | null) {
@@ -216,7 +226,8 @@ export default function SessionDetailPage() {
 
     loadedEventResults.forEach((result) => {
       const existing = totalsMap.get(result.player_id);
-      const displayName = getPlayerName(result.players) || existing?.display_name || "Unbekannter Spieler";
+      const displayName =
+        getPlayerName(result.players) || existing?.display_name || "Unbekannter Spieler";
 
       if (existing) {
         existing.total_penalty_points += result.penalty_points || 0;
@@ -389,7 +400,8 @@ export default function SessionDetailPage() {
                   const soloPlayerName =
                     participants.find((p) => p.player_id === event.solo_player_id)
                       ? getPlayerName(
-                          participants.find((p) => p.player_id === event.solo_player_id)?.players
+                          participants.find((p) => p.player_id === event.solo_player_id)?.players ||
+                            null
                         )
                       : "—";
 
