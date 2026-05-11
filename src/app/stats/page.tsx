@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowLeft, BarChart3, Crown, Trophy } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { buildPlayerOverviewStats } from "@/utils/player-overview-stats";
 
@@ -125,18 +126,27 @@ export default function StatsPage() {
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-50">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="mb-2 text-sm uppercase tracking-[0.2em] text-neutral-400">
-              Langzeit-Auswertung
+            <div className="mb-3 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-amber-400" />
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-400/80">
+                Langzeit-Auswertung
+              </p>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Gesamtstatistik
+            </h1>
+            <p className="mt-2 text-neutral-400">
+              Kompakte Übersicht aller Spieler über alle erfassten Spielabende.
             </p>
-            <h1 className="text-3xl font-bold sm:text-4xl">Gesamtstatistik</h1>
           </div>
 
           <Link
             href="/"
-            className="rounded-2xl border border-neutral-700 px-4 py-3 text-center font-medium transition hover:bg-neutral-100 hover:text-neutral-900"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3 text-center font-medium transition hover:border-neutral-500 hover:bg-neutral-900"
           >
+            <ArrowLeft className="h-4 w-4" />
             Zurück
           </Link>
         </div>
@@ -155,66 +165,83 @@ export default function StatsPage() {
 
         {!loading && !error && (
           <section className="space-y-4">
-            <div>
-              <p className="text-sm text-neutral-400">
-                Kompakte Übersicht aller Spieler über alle erfassten Spielabende.
-              </p>
-            </div>
-
             <div className="grid gap-3 md:hidden">
-              {rows.map((row, index) => (
-                <div
-                  key={row.playerId}
-                  className="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-5"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 text-sm text-neutral-400">
-                        {index + 1}.
+              {rows.map((row, index) => {
+                const isLeader = index === 0;
+                return (
+                  <div
+                    key={row.playerId}
+                    className={`rounded-3xl border p-5 ${
+                      isLeader
+                        ? "border-amber-400/40 bg-gradient-to-br from-amber-400/5 to-neutral-900/60"
+                        : "border-neutral-800 bg-neutral-900/40"
+                    }`}
+                  >
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        {isLeader ? (
+                          <Crown className="h-5 w-5 text-amber-400" />
+                        ) : (
+                          <span className="w-5 text-center text-sm text-neutral-500">
+                            {index + 1}
+                          </span>
+                        )}
+                        <span className="text-lg font-semibold">
+                          {row.playerName}
+                        </span>
+                      </div>
+
+                      <span
+                        className={`rounded-full border px-3 py-1 text-sm font-semibold tabular-nums ${
+                          isLeader
+                            ? "border-amber-400/50 bg-amber-400/10 text-amber-300"
+                            : "border-neutral-700 text-neutral-200"
+                        }`}
+                      >
+                        {row.totalPenaltyPoints} Punkte
                       </span>
-                      <span className="text-lg font-semibold">{row.playerName}</span>
                     </div>
 
-                    <span className="rounded-full border border-neutral-700 px-3 py-1 text-sm font-medium text-neutral-200">
-                      {row.totalPenaltyPoints} Punkte
-                    </span>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4">
+                        <p className="mb-1 text-neutral-400">Spiele</p>
+                        <p className="font-medium tabular-nums">
+                          {row.gamesPlayed}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4">
+                        <p className="mb-1 text-neutral-400">Ø / Spiel</p>
+                        <p className="font-medium tabular-nums">
+                          {row.avgPenaltyPerGame !== null
+                            ? row.avgPenaltyPerGame.toFixed(1)
+                            : "—"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4">
+                        <p className="mb-1 text-neutral-400">Soli</p>
+                        <p className="font-medium tabular-nums">
+                          {row.solosPlayed}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4">
+                        <p className="mb-1 text-neutral-400">Solo-Quote</p>
+                        <p className="font-medium tabular-nums">
+                          {row.soloWinRate !== null
+                            ? `${Math.round(row.soloWinRate)} %`
+                            : "—"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-2xl border border-neutral-800 p-4">
-                      <p className="mb-1 text-neutral-400">Spiele</p>
-                      <p className="font-medium">{row.gamesPlayed}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-neutral-800 p-4">
-                      <p className="mb-1 text-neutral-400">Ø / Spiel</p>
-                      <p className="font-medium">
-                        {row.avgPenaltyPerGame !== null
-                          ? row.avgPenaltyPerGame.toFixed(1)
-                          : "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-neutral-800 p-4">
-                      <p className="mb-1 text-neutral-400">Soli</p>
-                      <p className="font-medium">{row.solosPlayed}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-neutral-800 p-4">
-                      <p className="mb-1 text-neutral-400">Solo-Quote</p>
-                      <p className="font-medium">
-                        {row.soloWinRate !== null
-                          ? `${Math.round(row.soloWinRate)} %`
-                          : "—"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="hidden overflow-hidden rounded-3xl border border-neutral-800 md:block">
-              <div className="grid grid-cols-6 gap-4 border-b border-neutral-800 bg-neutral-900/80 px-5 py-4 text-sm text-neutral-400">
+              <div className="grid grid-cols-6 gap-4 border-b border-neutral-800 bg-neutral-900/80 px-5 py-4 text-sm font-medium text-neutral-400">
                 <div>Spieler</div>
                 <div className="text-right">Strafpunkte</div>
                 <div className="text-right">Spiele</div>
@@ -224,43 +251,62 @@ export default function StatsPage() {
               </div>
 
               <div className="divide-y divide-neutral-800">
-                {rows.map((row, index) => (
-                  <div
-                    key={row.playerId}
-                    className="grid grid-cols-6 gap-4 px-5 py-4 text-sm hover:bg-neutral-900/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 text-neutral-500">{index + 1}.</span>
-                      <span className="font-medium text-neutral-100">
-                        {row.playerName}
-                      </span>
-                    </div>
+                {rows.map((row, index) => {
+                  const isLeader = index === 0;
+                  return (
+                    <div
+                      key={row.playerId}
+                      className={`grid grid-cols-6 gap-4 px-5 py-4 text-sm transition hover:bg-neutral-900/60 ${
+                        isLeader ? "bg-amber-400/[0.03]" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {isLeader ? (
+                          <Trophy className="h-4 w-4 text-amber-400" />
+                        ) : (
+                          <span className="w-4 text-center text-neutral-500">
+                            {index + 1}
+                          </span>
+                        )}
+                        <span
+                          className={`font-medium ${
+                            isLeader ? "text-amber-100" : "text-neutral-100"
+                          }`}
+                        >
+                          {row.playerName}
+                        </span>
+                      </div>
 
-                    <div className="text-right font-semibold text-neutral-100">
-                      {row.totalPenaltyPoints}
-                    </div>
+                      <div
+                        className={`text-right font-semibold tabular-nums ${
+                          isLeader ? "text-amber-300" : "text-neutral-100"
+                        }`}
+                      >
+                        {row.totalPenaltyPoints}
+                      </div>
 
-                    <div className="text-right text-neutral-300">
-                      {row.gamesPlayed}
-                    </div>
+                      <div className="text-right text-neutral-300 tabular-nums">
+                        {row.gamesPlayed}
+                      </div>
 
-                    <div className="text-right text-neutral-300">
-                      {row.avgPenaltyPerGame !== null
-                        ? row.avgPenaltyPerGame.toFixed(1)
-                        : "—"}
-                    </div>
+                      <div className="text-right text-neutral-300 tabular-nums">
+                        {row.avgPenaltyPerGame !== null
+                          ? row.avgPenaltyPerGame.toFixed(1)
+                          : "—"}
+                      </div>
 
-                    <div className="text-right text-neutral-300">
-                      {row.solosPlayed}
-                    </div>
+                      <div className="text-right text-neutral-300 tabular-nums">
+                        {row.solosPlayed}
+                      </div>
 
-                    <div className="text-right text-neutral-300">
-                      {row.soloWinRate !== null
-                        ? `${Math.round(row.soloWinRate)} %`
-                        : "—"}
+                      <div className="text-right text-neutral-300 tabular-nums">
+                        {row.soloWinRate !== null
+                          ? `${Math.round(row.soloWinRate)} %`
+                          : "—"}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
