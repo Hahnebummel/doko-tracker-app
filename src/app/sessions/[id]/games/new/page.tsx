@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Save,
+  Settings2,
+  Spade,
+  StickyNote,
+  Target,
+  Users,
+} from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
 type Player = {
@@ -24,6 +33,9 @@ type ExistingEvent = {
 };
 
 type ScoreMap = Record<string, string>;
+
+const inputBase =
+  "w-full rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-neutral-50 placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/20 transition";
 
 export default function NewGamePage() {
   const params = useParams();
@@ -251,190 +263,240 @@ export default function NewGamePage() {
   }
 
   return (
-    <main className="min-h-screen p-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between gap-4 mb-8">
-        <h1 className="text-3xl font-bold">Spiel erfassen</h1>
-        <Link
-          href={sessionId ? `/sessions/${sessionId}` : "/"}
-          className="rounded-xl border px-4 py-2 font-medium hover:bg-white hover:text-black transition"
-        >
-          Zurück
-        </Link>
-      </div>
-
-      {loading && <p>Lade Daten...</p>}
-
-      {error && <p className="text-red-600 mb-4">Fehler: {error}</p>}
-
-      {!loading && (
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <section className="border rounded-2xl p-5 space-y-4">
-            <h2 className="text-xl font-semibold">Beteiligte Spieler</h2>
-
-            <div className="space-y-2">
-              {players.map((player) => {
-                const checked = selectedPlayerIds.includes(player.id);
-
-                return (
-                  <label
-                    key={player.id}
-                    className="flex items-center gap-3 border rounded-xl p-3 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => togglePlayer(player.id)}
-                    />
-                    <span>{player.display_name}</span>
-                  </label>
-                );
-              })}
+    <main className="min-h-screen bg-neutral-950 text-neutral-50">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Spade className="w-4 h-4 text-amber-400" />
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-400/80">
+                Neues Spiel
+              </p>
             </div>
-
-            <p className="text-sm opacity-80">
-              Ausgewählt: {selectedPlayerIds.length}
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+              Spiel erfassen
+            </h1>
+            <p className="mt-2 text-neutral-400">
+              Spielart, Beteiligte und Strafpunkte eintragen.
             </p>
-          </section>
+          </div>
 
-          <section className="border rounded-2xl p-5 space-y-4">
-            <h2 className="text-xl font-semibold">Spieldaten</h2>
+          <Link
+            href={sessionId ? `/sessions/${sessionId}` : "/"}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:border-neutral-500 hover:bg-neutral-900 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Zurück
+          </Link>
+        </div>
 
-            <div className="space-y-2">
-              <label className="block font-medium">Spielart</label>
-              <select
-                value={gameKind}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setGameKind(value);
-                  if (value !== "solo") {
-                    setSoloType("");
-                    setSoloPlayerId("");
-                  }
-                }}
-                className="w-full rounded-xl border bg-transparent p-3"
-              >
-                <option value="normal">Normalspiel</option>
-                <option value="solo">Solo</option>
-                <option value="wedding_game">Hochzeitsspiel</option>
-              </select>
-            </div>
+        {loading && (
+          <div className="rounded-3xl border border-neutral-800 p-5 text-neutral-400">
+            Lade Daten...
+          </div>
+        )}
 
-            {isSolo && (
-              <>
-                <div className="space-y-2">
-                  <label className="block font-medium">Solo-Art</label>
-                  <select
-                    value={soloType}
-                    onChange={(e) => setSoloType(e.target.value)}
-                    className="w-full rounded-xl border bg-transparent p-3"
-                  >
-                    <option value="">Bitte wählen</option>
-                    <option value="bubensolo">Bubensolo</option>
-                    <option value="damensolo">Damensolo</option>
-                    <option value="silent_wedding">Stille Hochzeit</option>
-                  </select>
+        {error && (
+          <div className="mb-6 rounded-3xl border border-red-800/60 bg-red-950/40 p-4 text-red-300">
+            {error}
+          </div>
+        )}
+
+        {!loading && (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-5 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-amber-400/80" />
+                  <h2 className="text-xl font-semibold">Beteiligte Spieler</h2>
                 </div>
+                <span className="text-sm text-neutral-400 tabular-nums">
+                  {selectedPlayerIds.length} ausgewählt
+                </span>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="block font-medium">Solo-Spieler</label>
-                  <select
-                    value={soloPlayerId}
-                    onChange={(e) => setSoloPlayerId(e.target.value)}
-                    className="w-full rounded-xl border bg-transparent p-3"
-                  >
-                    <option value="">Bitte wählen</option>
-                    {selectedPlayerIds.map((playerId) => {
-                      const player = players.find((p) => p.id === playerId);
-                      if (!player) return null;
-                      return (
-                        <option key={player.id} value={player.id}>
-                          {player.display_name}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              </>
-            )}
-
-            <div className="space-y-2">
-              <label className="block font-medium">Bock-Stufe</label>
-              <select
-                value={bockLevel}
-                onChange={(e) => setBockLevel(e.target.value)}
-                className="w-full rounded-xl border bg-transparent p-3"
-              >
-                <option value="none">Keine</option>
-                <option value="bock">Bock</option>
-                <option value="double_bock">Doppelbock</option>
-                <option value="triple_bock">Triplebock</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block font-medium">Special Round</label>
-              <select
-                value={specialRoundType}
-                onChange={(e) => setSpecialRoundType(e.target.value)}
-                className="w-full rounded-xl border bg-transparent p-3"
-              >
-                <option value="none">Keine</option>
-                <option value="devils_round">Teufelsrunde</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block font-medium">Notiz</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
-                className="w-full rounded-xl border bg-transparent p-3"
-                placeholder="Optional"
-              />
-            </div>
-          </section>
-
-          <section className="border rounded-2xl p-5 space-y-4">
-            <h2 className="text-xl font-semibold">Strafpunkte</h2>
-
-            {selectedPlayerIds.length === 0 ? (
-              <p className="opacity-80">Bitte zuerst beteiligte Spieler auswählen.</p>
-            ) : (
-              <div className="space-y-3">
-                {selectedPlayerIds.map((playerId) => {
-                  const player = players.find((p) => p.id === playerId);
-                  if (!player) return null;
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {players.map((player) => {
+                  const checked = selectedPlayerIds.includes(player.id);
 
                   return (
-                    <div key={playerId} className="space-y-2">
-                      <label className="block font-medium">
-                        {player.display_name}
-                      </label>
+                    <label
+                      key={player.id}
+                      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 cursor-pointer transition ${
+                        checked
+                          ? "border-amber-400/40 bg-amber-400/[0.06]"
+                          : "border-neutral-800 bg-neutral-950/40 hover:border-neutral-700"
+                      }`}
+                    >
                       <input
-                        type="number"
-                        inputMode="numeric"
-                        value={scores[playerId] || ""}
-                        onChange={(e) => updateScore(playerId, e.target.value)}
-                        className="w-full rounded-xl border bg-transparent p-3"
-                        placeholder="Leer = 0"
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => togglePlayer(player.id)}
+                        className="h-4 w-4 accent-amber-400"
                       />
-                    </div>
+                      <span className={checked ? "text-amber-100 font-medium" : ""}>
+                        {player.display_name}
+                      </span>
+                    </label>
                   );
                 })}
               </div>
-            )}
-          </section>
+            </section>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-xl border px-5 py-3 font-medium hover:bg-white hover:text-black transition disabled:opacity-50"
-          >
-            {saving ? "Speichere..." : "Spiel speichern"}
-          </button>
-        </form>
-      )}
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-amber-400/80" />
+                <h2 className="text-xl font-semibold">Spieldaten</h2>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-neutral-300">Spielart</label>
+                <select
+                  value={gameKind}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setGameKind(value);
+                    if (value !== "solo") {
+                      setSoloType("");
+                      setSoloPlayerId("");
+                    }
+                  }}
+                  className={inputBase}
+                >
+                  <option value="normal">Normalspiel</option>
+                  <option value="solo">Solo</option>
+                  <option value="wedding_game">Hochzeitsspiel</option>
+                </select>
+              </div>
+
+              {isSolo && (
+                <>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-300">Solo-Art</label>
+                    <select
+                      value={soloType}
+                      onChange={(e) => setSoloType(e.target.value)}
+                      className={inputBase}
+                    >
+                      <option value="">Bitte wählen</option>
+                      <option value="bubensolo">Bubensolo</option>
+                      <option value="damensolo">Damensolo</option>
+                      <option value="silent_wedding">Stille Hochzeit</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-300">Solo-Spieler</label>
+                    <select
+                      value={soloPlayerId}
+                      onChange={(e) => setSoloPlayerId(e.target.value)}
+                      className={inputBase}
+                    >
+                      <option value="">Bitte wählen</option>
+                      {selectedPlayerIds.map((playerId) => {
+                        const player = players.find((p) => p.id === playerId);
+                        if (!player) return null;
+                        return (
+                          <option key={player.id} value={player.id}>
+                            {player.display_name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-neutral-300">Bock-Stufe</label>
+                  <select
+                    value={bockLevel}
+                    onChange={(e) => setBockLevel(e.target.value)}
+                    className={inputBase}
+                  >
+                    <option value="none">Keine</option>
+                    <option value="bock">Bock</option>
+                    <option value="double_bock">Doppelbock</option>
+                    <option value="triple_bock">Triplebock</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-neutral-300">Special Round</label>
+                  <select
+                    value={specialRoundType}
+                    onChange={(e) => setSpecialRoundType(e.target.value)}
+                    className={inputBase}
+                  >
+                    <option value="none">Keine</option>
+                    <option value="devils_round">Teufelsrunde</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-neutral-300">
+                  <span className="inline-flex items-center gap-2">
+                    <StickyNote className="w-4 h-4" />
+                    Notiz
+                  </span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className={`${inputBase} resize-none`}
+                  placeholder="Optional"
+                />
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-amber-400/80" />
+                <h2 className="text-xl font-semibold">Strafpunkte</h2>
+              </div>
+
+              {selectedPlayerIds.length === 0 ? (
+                <p className="text-neutral-400">Bitte zuerst beteiligte Spieler auswählen.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedPlayerIds.map((playerId) => {
+                    const player = players.find((p) => p.id === playerId);
+                    if (!player) return null;
+
+                    return (
+                      <div key={playerId} className="space-y-2">
+                        <label className="block text-sm font-medium text-neutral-300">
+                          {player.display_name}
+                        </label>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={scores[playerId] || ""}
+                          onChange={(e) => updateScore(playerId, e.target.value)}
+                          className={`${inputBase} tabular-nums`}
+                          placeholder="Leer = 0"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-amber-400 text-neutral-950 px-5 py-3 font-semibold hover:bg-amber-300 transition shadow-lg shadow-amber-400/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? "Speichere..." : "Spiel speichern"}
+            </button>
+          </form>
+        )}
+      </div>
     </main>
   );
 }

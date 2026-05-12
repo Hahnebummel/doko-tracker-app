@@ -3,6 +3,21 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CalendarDays,
+  ClipboardList,
+  ListChecks,
+  MapPin,
+  Pencil,
+  Plus,
+  Spade,
+  StickyNote,
+  Trash2,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
 type PlayerRelation =
@@ -365,20 +380,27 @@ export default function SessionDetailPage() {
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-50">
       <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-neutral-400 mb-2">
-              Spielabend
-            </p>
-            <h1 className="text-3xl sm:text-4xl font-bold">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays className="w-4 h-4 text-amber-400" />
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-400/80">
+                Spielabend
+              </p>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
               {session ? formatDate(session.session_date) : "Spielabend"}
             </h1>
+            {session?.location && (
+              <p className="mt-2 text-neutral-400">{session.location}</p>
+            )}
           </div>
 
           <Link
             href="/"
-            className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:border-neutral-500 hover:bg-neutral-900 transition"
           >
+            <ArrowLeft className="w-4 h-4" />
             Zurück
           </Link>
         </div>
@@ -397,48 +419,63 @@ export default function SessionDetailPage() {
 
         {!loading && !error && session && sessionId && (
           <div className="space-y-6">
-            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-5 sm:p-6">
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-semibold mb-1">Basisdaten</h2>
+                  <div className="flex items-center gap-2 mb-1">
+                    <ClipboardList className="w-5 h-5 text-amber-400/80" />
+                    <h2 className="text-xl sm:text-2xl font-semibold">Basisdaten</h2>
+                  </div>
                   <p className="text-neutral-400">Rahmendaten dieses Spielabends.</p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Link
                     href={`/sessions/${sessionId}/games/new`}
-                    className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 text-neutral-950 px-4 py-3 font-semibold text-center hover:bg-amber-300 transition shadow-lg shadow-amber-400/10"
                   >
+                    <Plus className="w-4 h-4" />
                     Spiel erfassen
                   </Link>
                   <Link
                     href={`/sessions/${sessionId}/incidents/new`}
-                    className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:border-neutral-500 hover:bg-neutral-900 transition"
                   >
+                    <AlertTriangle className="w-4 h-4" />
                     Inzidenz erfassen
                   </Link>
                   <button
                     type="button"
                     onClick={handleDeleteSession}
                     disabled={deletingSession}
-                    className="rounded-2xl border border-red-700 px-4 py-3 font-medium text-red-300 transition hover:bg-red-100 hover:text-red-900 disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-800/60 px-4 py-3 font-medium text-red-300 transition hover:border-red-700 hover:bg-red-950/40 disabled:opacity-50"
                   >
-                    {deletingSession ? "Lösche Spielabend..." : "Spielabend löschen"}
+                    <Trash2 className="w-4 h-4" />
+                    {deletingSession ? "Lösche..." : "Spielabend löschen"}
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="rounded-2xl border border-neutral-800 p-4">
-                  <p className="text-sm text-neutral-400 mb-1">Datum</p>
+                <div className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4">
+                  <div className="flex items-center gap-2 mb-1 text-sm text-neutral-400">
+                    <CalendarDays className="w-4 h-4" />
+                    <p>Datum</p>
+                  </div>
                   <p className="font-medium">{formatDate(session.session_date)}</p>
                 </div>
-                <div className="rounded-2xl border border-neutral-800 p-4">
-                  <p className="text-sm text-neutral-400 mb-1">Ort</p>
+                <div className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4">
+                  <div className="flex items-center gap-2 mb-1 text-sm text-neutral-400">
+                    <MapPin className="w-4 h-4" />
+                    <p>Ort</p>
+                  </div>
                   <p className="font-medium">{session.location}</p>
                 </div>
-                <div className="rounded-2xl border border-neutral-800 p-4">
-                  <p className="text-sm text-neutral-400 mb-1">Notiz</p>
+                <div className="rounded-2xl border border-neutral-800 bg-neutral-950/40 p-4">
+                  <div className="flex items-center gap-2 mb-1 text-sm text-neutral-400">
+                    <StickyNote className="w-4 h-4" />
+                    <p>Notiz</p>
+                  </div>
                   <p className="font-medium">
                     {session.notes && session.notes.trim() ? session.notes : "—"}
                   </p>
@@ -446,9 +483,12 @@ export default function SessionDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-5 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl sm:text-2xl font-semibold">Anwesende Spieler</h2>
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-amber-400/80" />
+                  <h2 className="text-xl sm:text-2xl font-semibold">Anwesende Spieler</h2>
+                </div>
                 <span className="text-sm text-neutral-400">{participants.length} Spieler</span>
               </div>
 
@@ -459,7 +499,7 @@ export default function SessionDetailPage() {
                   {participants.map((participant) => (
                     <div
                       key={participant.player_id}
-                      className="rounded-2xl border border-neutral-800 px-4 py-4"
+                      className="rounded-2xl border border-neutral-800 bg-neutral-950/40 px-4 py-4"
                     >
                       {getPlayerName(participant.players)}
                     </div>
@@ -468,9 +508,12 @@ export default function SessionDetailPage() {
               )}
             </section>
 
-            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-5 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl sm:text-2xl font-semibold">Tagesstand</h2>
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-400/80" />
+                  <h2 className="text-xl sm:text-2xl font-semibold">Tagesstand</h2>
+                </div>
                 <span className="text-sm text-neutral-400">
                   sortiert nach wenigsten Strafpunkten
                 </span>
@@ -480,26 +523,56 @@ export default function SessionDetailPage() {
                 <p className="text-neutral-400">Keine Spieler gefunden.</p>
               ) : (
                 <div className="space-y-3">
-                  {scoreboard.map((entry, index) => (
-                    <div
-                      key={entry.player_id}
-                      className="rounded-2xl border border-neutral-800 px-4 py-4 flex items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-sm text-neutral-400 w-6">{index + 1}.</span>
-                        <span className="truncate">{entry.display_name}</span>
+                  {scoreboard.map((entry, index) => {
+                    const isLeader = index === 0;
+                    return (
+                      <div
+                        key={entry.player_id}
+                        className={`rounded-2xl border px-4 py-4 flex items-center justify-between gap-4 ${
+                          isLeader
+                            ? "border-amber-400/40 bg-gradient-to-r from-amber-400/[0.06] to-neutral-950/40"
+                            : "border-neutral-800 bg-neutral-950/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {isLeader ? (
+                            <Trophy className="w-5 h-5 text-amber-400 shrink-0" />
+                          ) : (
+                            <span className="text-sm text-neutral-500 w-5 text-center">
+                              {index + 1}
+                            </span>
+                          )}
+                          <span
+                            className={`truncate ${
+                              isLeader ? "text-amber-100 font-medium" : ""
+                            }`}
+                          >
+                            {entry.display_name}
+                          </span>
+                        </div>
+                        <span
+                          className={`font-semibold text-lg tabular-nums ${
+                            isLeader ? "text-amber-300" : ""
+                          }`}
+                        >
+                          {entry.total_penalty_points}
+                        </span>
                       </div>
-                      <span className="font-semibold text-lg">{entry.total_penalty_points}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
 
-            <section className="rounded-3xl border border-neutral-800 p-5 sm:p-6">
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-5 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl sm:text-2xl font-semibold">Ereignisse</h2>
-                <span className="text-sm text-neutral-400">{events.length} Einträge</span>
+                <div className="flex items-center gap-2">
+                  <ListChecks className="w-5 h-5 text-amber-400/80" />
+                  <h2 className="text-xl sm:text-2xl font-semibold">Ereignisse</h2>
+                </div>
+                <span className="text-sm text-neutral-400">
+                  {events.length} {events.length === 1 ? "Eintrag" : "Einträge"}
+                </span>
               </div>
 
               {events.length === 0 ? (
@@ -527,28 +600,49 @@ export default function SessionDetailPage() {
                         ? `/sessions/${sessionId}/games/${event.id}/edit`
                         : `/sessions/${sessionId}/incidents/${event.id}/edit`;
 
+                    const isGame = event.event_type === "game";
+
                     return (
-                      <div key={event.id} className="rounded-3xl border border-neutral-800 p-5 space-y-5">
+                      <div
+                        key={event.id}
+                        className="rounded-3xl border border-neutral-800 bg-neutral-950/40 p-5 space-y-5"
+                      >
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                          <div>
-                            <p className="font-semibold text-lg">
-                              Ereignis {event.sequence_number}
-                              {event.event_type === "game" && event.game_number
-                                ? ` · Spiel ${event.game_number}`
-                                : ""}
-                            </p>
-                            <p className="text-neutral-400 mt-1">
-                              {event.event_type === "game"
-                                ? labelForGameKind(event.game_kind)
-                                : labelForIncidentType(event.incident_type)}
-                            </p>
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                                isGame
+                                  ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                                  : "border-red-900/40 bg-red-950/30 text-red-300"
+                              }`}
+                            >
+                              {isGame ? (
+                                <Spade className="h-4 w-4" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-lg">
+                                Ereignis {event.sequence_number}
+                                {isGame && event.game_number
+                                  ? ` · Spiel ${event.game_number}`
+                                  : ""}
+                              </p>
+                              <p className="text-neutral-400 mt-1">
+                                {isGame
+                                  ? labelForGameKind(event.game_kind)
+                                  : labelForIncidentType(event.incident_type)}
+                              </p>
+                            </div>
                           </div>
 
                           <div className="flex flex-col sm:flex-row gap-3">
                             <Link
                               href={editHref}
-                              className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:bg-neutral-100 hover:text-neutral-900 transition"
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:border-amber-400/40 hover:bg-neutral-900 transition"
                             >
+                              <Pencil className="w-4 h-4" />
                               Bearbeiten
                             </Link>
 
@@ -556,33 +650,34 @@ export default function SessionDetailPage() {
                               type="button"
                               onClick={() => handleDeleteEvent(event.id)}
                               disabled={deletingEventId === event.id || deletingSession}
-                              className="rounded-2xl border border-neutral-700 px-4 py-3 font-medium hover:bg-neutral-100 hover:text-neutral-900 transition disabled:opacity-50"
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-neutral-300 hover:border-red-800/60 hover:bg-red-950/30 hover:text-red-300 transition disabled:opacity-50"
                             >
+                              <Trash2 className="w-4 h-4" />
                               {deletingEventId === event.id ? "Lösche..." : "Löschen"}
                             </button>
                           </div>
                         </div>
 
-                        {event.event_type === "game" && (
+                        {isGame && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                            <div className="rounded-2xl border border-neutral-800 p-4">
+                            <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
                               <p className="text-neutral-400 mb-1">Bock-Stufe</p>
-                              <p>{labelForBockLevel(event.bock_level)}</p>
+                              <p className="font-medium">{labelForBockLevel(event.bock_level)}</p>
                             </div>
-                            <div className="rounded-2xl border border-neutral-800 p-4">
+                            <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
                               <p className="text-neutral-400 mb-1">Special Round</p>
-                              <p>{labelForSpecialRound(event.special_round_type)}</p>
+                              <p className="font-medium">{labelForSpecialRound(event.special_round_type)}</p>
                             </div>
 
                             {event.game_kind === "solo" && (
                               <>
-                                <div className="rounded-2xl border border-neutral-800 p-4">
+                                <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
                                   <p className="text-neutral-400 mb-1">Solo-Art</p>
-                                  <p>{labelForSoloType(event.solo_type)}</p>
+                                  <p className="font-medium">{labelForSoloType(event.solo_type)}</p>
                                 </div>
-                                <div className="rounded-2xl border border-neutral-800 p-4">
+                                <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
                                   <p className="text-neutral-400 mb-1">Solo-Spieler</p>
-                                  <p>{soloPlayerName}</p>
+                                  <p className="font-medium">{soloPlayerName}</p>
                                 </div>
                               </>
                             )}
@@ -591,7 +686,7 @@ export default function SessionDetailPage() {
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div>
-                            <p className="font-medium mb-3">Beteiligte Spieler</p>
+                            <p className="font-medium mb-3 text-neutral-300">Beteiligte Spieler</p>
                             {participantsForEvent.length === 0 ? (
                               <p className="text-neutral-400">Keine Beteiligten gefunden.</p>
                             ) : (
@@ -599,7 +694,7 @@ export default function SessionDetailPage() {
                                 {participantsForEvent.map((participant) => (
                                   <div
                                     key={`${event.id}-${participant.player_id}`}
-                                    className="rounded-2xl border border-neutral-800 px-4 py-3"
+                                    className="rounded-2xl border border-neutral-800 bg-neutral-950/60 px-4 py-3"
                                   >
                                     {getPlayerName(participant.players)}
                                   </div>
@@ -609,7 +704,7 @@ export default function SessionDetailPage() {
                           </div>
 
                           <div>
-                            <p className="font-medium mb-3">Strafpunkte</p>
+                            <p className="font-medium mb-3 text-neutral-300">Strafpunkte</p>
                             {resultsForEvent.length === 0 ? (
                               <p className="text-neutral-400">Keine Strafpunkte gefunden.</p>
                             ) : (
@@ -617,10 +712,10 @@ export default function SessionDetailPage() {
                                 {resultsForEvent.map((result) => (
                                   <div
                                     key={`${event.id}-${result.player_id}`}
-                                    className="rounded-2xl border border-neutral-800 px-4 py-3 flex items-center justify-between gap-4"
+                                    className="rounded-2xl border border-neutral-800 bg-neutral-950/60 px-4 py-3 flex items-center justify-between gap-4"
                                   >
                                     <span>{getPlayerName(result.players)}</span>
-                                    <span className="font-semibold">{result.penalty_points}</span>
+                                    <span className="font-semibold tabular-nums">{result.penalty_points}</span>
                                   </div>
                                 ))}
                               </div>
@@ -628,8 +723,11 @@ export default function SessionDetailPage() {
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-neutral-800 p-4 text-sm">
-                          <p className="text-neutral-400 mb-1">Notiz</p>
+                        <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 text-sm">
+                          <div className="flex items-center gap-2 mb-1 text-neutral-400">
+                            <StickyNote className="w-4 h-4" />
+                            <p>Notiz</p>
+                          </div>
                           <p>{event.notes && event.notes.trim() ? event.notes : "—"}</p>
                         </div>
                       </div>
