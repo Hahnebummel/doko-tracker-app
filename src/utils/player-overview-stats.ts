@@ -31,6 +31,8 @@ export type PlayerOverviewStatsRow = {
   playerName: string;
   totalPenaltyPoints: number;
   gamesPlayed: number;
+  gameWins: number;
+  gameWinRate: number | null;
   avgPenaltyPerGame: number | null;
   solosPlayed: number;
   soloWins: number;
@@ -114,12 +116,35 @@ export function buildPlayerOverviewStats(params: {
 
     const gameEventIds = new Set(gameParticipations.map((entry) => entry.event_id));
 
-    const gamePenaltyPoints = playerResults
-      .filter((result) => gameEventIds.has(result.event_id))
-      .reduce((sum, result) => sum + getPenaltyPoints(result.penalty_points), 0);
+    const gameResults = playerResults.filter((result) =>
+      gameEventIds.has(result.event_id)
+    );
+
+    const gamePenaltyPoints = gameResults.reduce(
+      (sum, result) => sum + getPenaltyPoints(result.penalty_points),
+      0
+    );
 
     const avgPenaltyPerGame =
       gamesPlayed > 0 ? gamePenaltyPoints / gamesPlayed : null;
+
+    // Ein Spiel gilt als gewonnen, wenn der Spieler 0 Strafpunkte hat
+    // (analog zur bestehenden Solo-Gewinnquote-Logik).
+    const gameResultsByEventId = new Map<string, EventResultRow>();
+    for (const result of gameResults) {
+      gameResultsByEventId.set(result.event_id, result);
+    }
+
+    let gameWins = 0;
+    for (const participation of gameParticipations) {
+      const result = gameResultsByEventId.get(participation.event_id);
+      if (getPenaltyPoints(result?.penalty_points) === 0) {
+        gameWins += 1;
+      }
+    }
+
+    const gameWinRate =
+      gamesPlayed > 0 ? (gameWins / gamesPlayed) * 100 : null;
 
     const soloEventsAsSoloPlayer = sessionEvents.filter(
       (event) =>
@@ -152,6 +177,8 @@ export function buildPlayerOverviewStats(params: {
       playerName,
       totalPenaltyPoints,
       gamesPlayed,
+      gameWins,
+      gameWinRate,
       avgPenaltyPerGame,
       solosPlayed,
       soloWins,
