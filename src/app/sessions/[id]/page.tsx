@@ -429,7 +429,7 @@ export default function SessionDetailPage() {
                   <p className="text-neutral-400">Rahmendaten dieses Spielabends.</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:justify-end">
                   <Link
                     href={`/sessions/${sessionId}/games/new`}
                     className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 text-neutral-950 px-4 py-3 font-semibold text-center hover:bg-amber-300 transition shadow-lg shadow-amber-400/10"
@@ -444,6 +444,13 @@ export default function SessionDetailPage() {
                     <AlertTriangle className="w-4 h-4" />
                     Inzidenz erfassen
                   </Link>
+                  <Link
+                    href={`/sessions/${sessionId}/edit`}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3 font-medium text-center hover:border-amber-400/40 hover:bg-neutral-900 transition"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Bearbeiten
+                  </Link>
                   <button
                     type="button"
                     onClick={handleDeleteSession}
@@ -451,7 +458,7 @@ export default function SessionDetailPage() {
                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-800/60 px-4 py-3 font-medium text-red-300 transition hover:border-red-700 hover:bg-red-950/40 disabled:opacity-50"
                   >
                     <Trash2 className="w-4 h-4" />
-                    {deletingSession ? "Lösche..." : "Spielabend löschen"}
+                    {deletingSession ? "Lösche..." : "Löschen"}
                   </button>
                 </div>
               </div>
