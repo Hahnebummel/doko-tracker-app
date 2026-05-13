@@ -2,13 +2,25 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BarChart3, ChevronDown, ChevronUp, Trophy } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  CalendarRange,
+  ChevronDown,
+  ChevronUp,
+  Trophy,
+} from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { buildPlayerOverviewStats } from "@/utils/player-overview-stats";
 
 type Player = {
   id: string;
   display_name: string;
+};
+
+type Session = {
+  id: string;
+  session_date: string;
 };
 
 type SessionEvent = {
@@ -110,7 +122,13 @@ function compareRows(
 }
 
 export default function StatsPage() {
-  const [rows, setRows] = useState<PlayerOverviewRow[]>([]);
+  // Rohdaten — werden einmal geladen, Aggregation passiert über useMemo
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionEvents, setSessionEvents] = useState<SessionEvent[]>([]);
+  const [eventParticipants, setEventParticipants] = useState<EventParticipant[]>([]);
+  const [eventResults, setEventResults] = useState<EventResult[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,10 +136,84 @@ export default function StatsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("avgPenaltyPerGame");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
+  // Zeitraum-Filter — leer = kein Filter
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const isFilterActive = Boolean(dateFrom || dateTo);
+
+  // Welche Spielabende fallen in den gewählten Zeitraum?
+  const filteredSessionIds = useMemo(() => {
+    return new Set(
+      sessions
+        .filter((session) => {
+          if (dateFrom && session.session_date < dateFrom) return false;
+          if (dateTo && session.session_date > dateTo) return false;
+          return true;
+        })
+        .map((session) => session.id)
+    );
+  }, [sessions, dateFrom, dateTo]);
+
+  // Aggregation auf Basis der gefilterten Daten
+  const rows = useMemo(() => {
+    const filteredEvents = sessionEvents.filter((event) =>
+      filteredSessionIds.has(event.session_id)
+    );
+    const filteredEventIds = new Set(filteredEvents.map((event) => event.id));
+    const filteredParticipants = eventParticipants.filter((row) =>
+      filteredEventIds.has(row.event_id)
+    );
+    const filteredResults = eventResults.filter((row) =>
+      filteredEventIds.has(row.event_id)
+    );
+
+    return buildPlayerOverviewStats({
+      players,
+      sessionEvents: filteredEvents,
+      eventParticipants: filteredParticipants,
+      eventResults: filteredResults,
+    });
+  }, [
+    players,
+    sessionEvents,
+    eventParticipants,
+    eventResults,
+    filteredSessionIds,
+  ]);
+
   const sortedRows = useMemo(
     () => [...rows].sort((a, b) => compareRows(a, b, sortKey, sortDir)),
     [rows, sortKey, sortDir]
   );
+
+  function applyPreset(preset: "thisYear" | "last30" | "last90") {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    if (preset === "thisYear") {
+      setDateFrom(`${yyyy}-01-01`);
+      setDateTo(todayStr);
+      return;
+    }
+
+    const offsetDays = preset === "last30" ? 30 : 90;
+    const past = new Date(today);
+    past.setDate(today.getDate() - offsetDays);
+    const py = past.getFullYear();
+    const pm = String(past.getMonth() + 1).padStart(2, "0");
+    const pd = String(past.getDate()).padStart(2, "0");
+    setDateFrom(`${py}-${pm}-${pd}`);
+    setDateTo(todayStr);
+  }
+
+  function resetFilter() {
+    setDateFrom("");
+    setDateTo("");
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -167,6 +259,16 @@ export default function StatsPage() {
         return;
       }
 
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from("sessions")
+        .select("id, session_date");
+
+      if (sessionsError) {
+        setError(sessionsError.message);
+        setLoading(false);
+        return;
+      }
+
       const { data: sessionEventsData, error: sessionEventsError } = await supabase
         .from("session_events")
         .select("id, session_id, event_type, game_kind, solo_type, solo_player_id");
@@ -203,19 +305,11 @@ export default function StatsPage() {
         return;
       }
 
-      const players = (playersData || []) as Player[];
-      const sessionEvents = (sessionEventsData || []) as SessionEvent[];
-      const eventParticipants = (eventParticipantsData || []) as EventParticipant[];
-      const eventResults = (eventResultsData || []) as EventResult[];
-
-      const statRows = buildPlayerOverviewStats({
-        players,
-        sessionEvents,
-        eventParticipants,
-        eventResults,
-      });
-
-      setRows(statRows);
+      setPlayers((playersData || []) as Player[]);
+      setSessions((sessionsData || []) as Session[]);
+      setSessionEvents((sessionEventsData || []) as SessionEvent[]);
+      setEventParticipants((eventParticipantsData || []) as EventParticipant[]);
+      setEventResults((eventResultsData || []) as EventResult[]);
       setLoading(false);
     }
 
@@ -263,7 +357,105 @@ export default function StatsPage() {
         )}
 
         {!loading && !error && (
-          <section className="space-y-4">
+          <div className="space-y-6">
+            {/* Zeitraum-Filter */}
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarRange className="h-5 w-5 text-amber-400/80" />
+                  <h2 className="text-base font-semibold">Zeitraum</h2>
+                </div>
+                {isFilterActive && (
+                  <button
+                    type="button"
+                    onClick={resetFilter}
+                    className="text-xs text-neutral-400 transition hover:text-amber-400"
+                  >
+                    Zurücksetzen
+                  </button>
+                )}
+              </div>
+
+              <div className="mb-3 grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="dateFrom"
+                    className="block text-xs text-neutral-400"
+                  >
+                    Von
+                  </label>
+                  <input
+                    id="dateFrom"
+                    type="date"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-50 transition focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="dateTo"
+                    className="block text-xs text-neutral-400"
+                  >
+                    Bis
+                  </label>
+                  <input
+                    id="dateTo"
+                    type="date"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-50 transition focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyPreset("thisYear")}
+                  className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-amber-400/40 hover:text-amber-300"
+                >
+                  Dieses Jahr
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("last90")}
+                  className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-amber-400/40 hover:text-amber-300"
+                >
+                  Letzte 90 Tage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("last30")}
+                  className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-amber-400/40 hover:text-amber-300"
+                >
+                  Letzte 30 Tage
+                </button>
+              </div>
+
+              <p className="text-xs text-neutral-500">
+                {isFilterActive ? (
+                  <>
+                    <span className="text-amber-400/80 tabular-nums">
+                      {filteredSessionIds.size}
+                    </span>{" "}
+                    von{" "}
+                    <span className="tabular-nums">{sessions.length}</span>{" "}
+                    Spielabenden im gewählten Zeitraum.
+                  </>
+                ) : (
+                  <>
+                    Filter inaktiv — alle{" "}
+                    <span className="tabular-nums">{sessions.length}</span>{" "}
+                    Spielabende werden berücksichtigt.
+                  </>
+                )}
+              </p>
+            </section>
+
+            <section className="space-y-4">
             {/* Reduzierte Sicht: nur im Hochformat auf kleinen Bildschirmen */}
             <div className="overflow-hidden rounded-3xl border border-neutral-800 md:hidden landscape:hidden">
               <div className="grid grid-cols-[1.5rem_1fr_auto_auto] gap-3 border-b border-neutral-800 bg-neutral-900/80 px-4 py-3 text-xs font-medium uppercase tracking-wider">
@@ -475,7 +667,8 @@ export default function StatsPage() {
                 })}
               </div>
             </div>
-          </section>
+            </section>
+          </div>
         )}
       </div>
     </main>
