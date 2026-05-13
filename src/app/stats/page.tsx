@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, BarChart3, Trophy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, BarChart3, ChevronDown, ChevronUp, Trophy } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { buildPlayerOverviewStats } from "@/utils/player-overview-stats";
 
@@ -48,10 +48,107 @@ type PlayerOverviewRow = {
   soloWinRate: number | null;
 };
 
+type SortKey =
+  | "playerName"
+  | "avgPenaltyPerGame"
+  | "totalPenaltyPoints"
+  | "gameWinRate"
+  | "gamesPlayed"
+  | "solosPlayed"
+  | "soloWinRate";
+
+type SortDir = "asc" | "desc";
+
+// "Natürliche" Default-Richtung pro Spalte beim ersten Klick.
+const DEFAULT_DIRECTIONS: Record<SortKey, SortDir> = {
+  playerName: "asc",
+  avgPenaltyPerGame: "asc",
+  totalPenaltyPoints: "asc",
+  gameWinRate: "desc",
+  gamesPlayed: "desc",
+  solosPlayed: "desc",
+  soloWinRate: "desc",
+};
+
+const SORT_LABELS: Record<SortKey, string> = {
+  playerName: "Spieler",
+  avgPenaltyPerGame: "Ø/Spiel",
+  totalPenaltyPoints: "Strafpunkte",
+  gameWinRate: "Quote",
+  gamesPlayed: "Spiele",
+  solosPlayed: "Soli",
+  soloWinRate: "Solo-Quote",
+};
+
+function compareRows(
+  a: PlayerOverviewRow,
+  b: PlayerOverviewRow,
+  key: SortKey,
+  dir: SortDir
+): number {
+  // Tiebreaker (immer aufsteigend nach Name)
+  const tiebreak = a.playerName.localeCompare(b.playerName, "de");
+
+  if (key === "playerName") {
+    const diff = tiebreak;
+    return dir === "asc" ? diff : -diff;
+  }
+
+  const aVal = a[key];
+  const bVal = b[key];
+
+  // null-Werte (z. B. kein Spiel gespielt) rutschen immer ans Ende
+  if (aVal === null && bVal === null) return tiebreak;
+  if (aVal === null) return 1;
+  if (bVal === null) return -1;
+
+  const diff = (aVal as number) - (bVal as number);
+  if (diff !== 0) {
+    return dir === "asc" ? diff : -diff;
+  }
+  return tiebreak;
+}
+
 export default function StatsPage() {
   const [rows, setRows] = useState<PlayerOverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Sortierzustand — Standard: Ø/Spiel aufsteigend
+  const [sortKey, setSortKey] = useState<SortKey>("avgPenaltyPerGame");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const sortedRows = useMemo(
+    () => [...rows].sort((a, b) => compareRows(a, b, sortKey, sortDir)),
+    [rows, sortKey, sortDir]
+  );
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(DEFAULT_DIRECTIONS[key]);
+    }
+  }
+
+  function SortIcon({ active }: { active: boolean }) {
+    if (!active) return null;
+    return sortDir === "asc" ? (
+      <ChevronUp className="h-3 w-3" />
+    ) : (
+      <ChevronDown className="h-3 w-3" />
+    );
+  }
+
+  function headerClasses(key: SortKey, align: "left" | "right" = "left"): string {
+    const active = sortKey === key;
+    const justify = align === "right" ? "justify-end" : "justify-start";
+    const color = active
+      ? "text-amber-400/80"
+      : "text-neutral-400 hover:text-neutral-200";
+    return `inline-flex w-full items-center gap-1 ${justify} transition ${color}`;
+  }
 
   useEffect(() => {
     async function loadStats() {
@@ -169,15 +266,36 @@ export default function StatsPage() {
           <section className="space-y-4">
             {/* Reduzierte Sicht: nur im Hochformat auf kleinen Bildschirmen */}
             <div className="overflow-hidden rounded-3xl border border-neutral-800 md:hidden landscape:hidden">
-              <div className="grid grid-cols-[1.5rem_1fr_auto_auto] gap-3 border-b border-neutral-800 bg-neutral-900/80 px-4 py-3 text-xs font-medium uppercase tracking-wider text-neutral-400">
+              <div className="grid grid-cols-[1.5rem_1fr_auto_auto] gap-3 border-b border-neutral-800 bg-neutral-900/80 px-4 py-3 text-xs font-medium uppercase tracking-wider">
                 <div></div>
-                <div>Spieler</div>
-                <div className="text-right">Ø/Spiel</div>
-                <div className="w-12 text-right">Quote</div>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("playerName")}
+                  className={headerClasses("playerName", "left")}
+                >
+                  Spieler
+                  <SortIcon active={sortKey === "playerName"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("avgPenaltyPerGame")}
+                  className={headerClasses("avgPenaltyPerGame", "right")}
+                >
+                  Ø/Spiel
+                  <SortIcon active={sortKey === "avgPenaltyPerGame"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("gameWinRate")}
+                  className={headerClasses("gameWinRate", "right")}
+                >
+                  Quote
+                  <SortIcon active={sortKey === "gameWinRate"} />
+                </button>
               </div>
 
               <div className="divide-y divide-neutral-800">
-                {rows.map((row, index) => {
+                {sortedRows.map((row, index) => {
                   const isLeader = index === 0;
                   return (
                     <div
@@ -211,7 +329,7 @@ export default function StatsPage() {
                           ? row.avgPenaltyPerGame.toFixed(1)
                           : "—"}
                       </span>
-                      <span className="w-12 text-right text-neutral-300 tabular-nums">
+                      <span className="text-right text-neutral-300 tabular-nums">
                         {row.gameWinRate !== null
                           ? `${Math.round(row.gameWinRate)}%`
                           : "—"}
@@ -222,26 +340,77 @@ export default function StatsPage() {
               </div>
             </div>
 
-            {/* Hinweis: nur im Hochformat auf kleinen Bildschirmen */}
+            {/* Hinweis im Hochformat: aktuelle Sortierung und Querformat-Hinweis */}
             <p className="text-xs text-neutral-500 md:hidden landscape:hidden">
-              Alle Werte sichtbar im Querformat oder auf größerem Bildschirm.
+              Sortiert nach{" "}
+              <span className="text-amber-400/80">{SORT_LABELS[sortKey]}</span>
+              {" "}({sortDir === "asc" ? "aufsteigend" : "absteigend"}). Alle Spalten im Querformat sichtbar.
             </p>
 
             {/* Volle Tabelle: im Querformat (auch auf dem Handy) und auf größeren Bildschirmen */}
             <div className="hidden overflow-hidden rounded-3xl border border-neutral-800 landscape:block md:block">
-              <div className="grid grid-cols-[1.75rem_minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-2 border-b border-neutral-800 bg-neutral-900/80 px-3 py-3 text-xs font-medium text-neutral-400 sm:gap-4 sm:px-5 sm:py-4 sm:text-sm">
+              <div className="grid grid-cols-[1.75rem_minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-2 border-b border-neutral-800 bg-neutral-900/80 px-3 py-3 text-xs font-medium sm:gap-4 sm:px-5 sm:py-4 sm:text-sm">
                 <div></div>
-                <div>Spieler</div>
-                <div className="text-right">Ø/Spiel</div>
-                <div className="text-right">Strafp.</div>
-                <div className="text-right">Quote</div>
-                <div className="text-right">Spiele</div>
-                <div className="text-right">Soli</div>
-                <div className="text-right">Solo-Quote</div>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("playerName")}
+                  className={headerClasses("playerName", "left")}
+                >
+                  Spieler
+                  <SortIcon active={sortKey === "playerName"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("avgPenaltyPerGame")}
+                  className={headerClasses("avgPenaltyPerGame", "right")}
+                >
+                  Ø/Spiel
+                  <SortIcon active={sortKey === "avgPenaltyPerGame"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("totalPenaltyPoints")}
+                  className={headerClasses("totalPenaltyPoints", "right")}
+                >
+                  Strafp.
+                  <SortIcon active={sortKey === "totalPenaltyPoints"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("gameWinRate")}
+                  className={headerClasses("gameWinRate", "right")}
+                >
+                  Quote
+                  <SortIcon active={sortKey === "gameWinRate"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("gamesPlayed")}
+                  className={headerClasses("gamesPlayed", "right")}
+                >
+                  Spiele
+                  <SortIcon active={sortKey === "gamesPlayed"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("solosPlayed")}
+                  className={headerClasses("solosPlayed", "right")}
+                >
+                  Soli
+                  <SortIcon active={sortKey === "solosPlayed"} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("soloWinRate")}
+                  className={headerClasses("soloWinRate", "right")}
+                >
+                  Solo-Quote
+                  <SortIcon active={sortKey === "soloWinRate"} />
+                </button>
               </div>
 
               <div className="divide-y divide-neutral-800">
-                {rows.map((row, index) => {
+                {sortedRows.map((row, index) => {
                   const isLeader = index === 0;
                   return (
                     <div
