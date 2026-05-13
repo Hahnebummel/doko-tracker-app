@@ -167,12 +167,12 @@ export default function StatsPage() {
 
         {!loading && !error && (
           <section className="space-y-4">
-            {/* Mobile: kompakte Leaderboard-Liste */}
-            <div className="overflow-hidden rounded-3xl border border-neutral-800 md:hidden">
+            {/* Reduzierte Sicht: nur im Hochformat auf kleinen Bildschirmen */}
+            <div className="overflow-hidden rounded-3xl border border-neutral-800 md:hidden landscape:hidden">
               <div className="grid grid-cols-[1.5rem_1fr_auto_auto] gap-3 border-b border-neutral-800 bg-neutral-900/80 px-4 py-3 text-xs font-medium uppercase tracking-wider text-neutral-400">
                 <div></div>
                 <div>Spieler</div>
-                <div className="text-right">Punkte</div>
+                <div className="text-right">Ø/Spiel</div>
                 <div className="w-12 text-right">Quote</div>
               </div>
 
@@ -207,7 +207,9 @@ export default function StatsPage() {
                           isLeader ? "text-amber-300" : ""
                         }`}
                       >
-                        {row.totalPenaltyPoints}
+                        {row.avgPenaltyPerGame !== null
+                          ? row.avgPenaltyPerGame.toFixed(1)
+                          : "—"}
                       </span>
                       <span className="w-12 text-right text-neutral-300 tabular-nums">
                         {row.gameWinRate !== null
@@ -220,20 +222,20 @@ export default function StatsPage() {
               </div>
             </div>
 
-            {/* Mobile: kleiner Hinweis auf zusätzliche Details */}
-            <p className="text-xs text-neutral-500 md:hidden">
-              Mehr Details (Spiele, Ø/Spiel, Soli, Solo-Quote) sichtbar auf größerem Bildschirm.
+            {/* Hinweis: nur im Hochformat auf kleinen Bildschirmen */}
+            <p className="text-xs text-neutral-500 md:hidden landscape:hidden">
+              Alle Werte sichtbar im Querformat oder auf größerem Bildschirm.
             </p>
 
-            {/* Desktop: volle Tabelle mit allen Metriken */}
-            <div className="hidden overflow-hidden rounded-3xl border border-neutral-800 md:block">
-              <div className="grid grid-cols-[2rem_minmax(0,1.6fr)_repeat(6,minmax(0,1fr))] gap-4 border-b border-neutral-800 bg-neutral-900/80 px-5 py-4 text-sm font-medium text-neutral-400">
+            {/* Volle Tabelle: im Querformat (auch auf dem Handy) und auf größeren Bildschirmen */}
+            <div className="hidden overflow-hidden rounded-3xl border border-neutral-800 landscape:block md:block">
+              <div className="grid grid-cols-[1.75rem_minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] gap-2 border-b border-neutral-800 bg-neutral-900/80 px-3 py-3 text-xs font-medium text-neutral-400 sm:gap-4 sm:px-5 sm:py-4 sm:text-sm">
                 <div></div>
                 <div>Spieler</div>
-                <div className="text-right">Strafpunkte</div>
+                <div className="text-right">Ø/Spiel</div>
+                <div className="text-right">Strafp.</div>
                 <div className="text-right">Quote</div>
                 <div className="text-right">Spiele</div>
-                <div className="text-right">Ø / Spiel</div>
                 <div className="text-right">Soli</div>
                 <div className="text-right">Solo-Quote</div>
               </div>
@@ -244,7 +246,7 @@ export default function StatsPage() {
                   return (
                     <div
                       key={row.playerId}
-                      className={`grid grid-cols-[2rem_minmax(0,1.6fr)_repeat(6,minmax(0,1fr))] items-center gap-4 px-5 py-3 text-sm transition hover:bg-neutral-900/60 ${
+                      className={`grid grid-cols-[1.75rem_minmax(0,1.5fr)_repeat(6,minmax(0,1fr))] items-center gap-2 px-3 py-3 text-xs transition hover:bg-neutral-900/60 sm:gap-4 sm:px-5 sm:py-3 sm:text-sm ${
                         isLeader ? "bg-amber-400/[0.03]" : ""
                       }`}
                     >
@@ -271,6 +273,12 @@ export default function StatsPage() {
                           isLeader ? "text-amber-300" : "text-neutral-100"
                         }`}
                       >
+                        {row.avgPenaltyPerGame !== null
+                          ? row.avgPenaltyPerGame.toFixed(1)
+                          : "—"}
+                      </div>
+
+                      <div className="text-right text-neutral-300 tabular-nums">
                         {row.totalPenaltyPoints}
                       </div>
 
@@ -282,12 +290,6 @@ export default function StatsPage() {
 
                       <div className="text-right text-neutral-300 tabular-nums">
                         {row.gamesPlayed}
-                      </div>
-
-                      <div className="text-right text-neutral-300 tabular-nums">
-                        {row.avgPenaltyPerGame !== null
-                          ? row.avgPenaltyPerGame.toFixed(1)
-                          : "—"}
                       </div>
 
                       <div className="text-right text-neutral-300 tabular-nums">

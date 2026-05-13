@@ -186,16 +186,18 @@ export function buildPlayerOverviewStats(params: {
     };
   });
 
+  // Ranking nach Ø Strafpunkten pro Spiel (kleiner = besser).
+  // Spieler ohne Spiele rutschen ans Ende.
   rows.sort((a, b) => {
-    if (a.totalPenaltyPoints !== b.totalPenaltyPoints) {
-      return a.totalPenaltyPoints - b.totalPenaltyPoints;
-    }
-
     const aAvg = a.avgPenaltyPerGame ?? Number.POSITIVE_INFINITY;
     const bAvg = b.avgPenaltyPerGame ?? Number.POSITIVE_INFINITY;
 
     if (aAvg !== bAvg) {
       return aAvg - bAvg;
+    }
+
+    if (a.totalPenaltyPoints !== b.totalPenaltyPoints) {
+      return a.totalPenaltyPoints - b.totalPenaltyPoints;
     }
 
     return a.playerName.localeCompare(b.playerName, "de");
