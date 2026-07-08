@@ -5,8 +5,10 @@ name: Keep Supabase alive
 
 on:
   schedule:
-    # Alle 2 Tage um 09:17 UTC (sicherer Puffer gegen die 7-Tage-Pausierung)
-    - cron: "17 9 */2 * *"
+    # Täglich um 09:17 UTC. Zusammen mit Vercel Cron (zu anderer Uhrzeit)
+    # haben wir zwei unabhängige Pings pro Tag — reichlich Puffer gegen
+    # verzögerte oder ausgefallene Läufe.
+    - cron: "17 9 * * *"
   # Erlaubt einen manuellen Start direkt aus der GitHub-Oberfläche
   workflow_dispatch:
 

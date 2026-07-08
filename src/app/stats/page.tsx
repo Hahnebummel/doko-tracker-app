@@ -187,29 +187,6 @@ export default function StatsPage() {
     [rows, sortKey, sortDir]
   );
 
-  function applyPreset(preset: "thisYear" | "last30" | "last90") {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-
-    if (preset === "thisYear") {
-      setDateFrom(`${yyyy}-01-01`);
-      setDateTo(todayStr);
-      return;
-    }
-
-    const offsetDays = preset === "last30" ? 30 : 90;
-    const past = new Date(today);
-    past.setDate(today.getDate() - offsetDays);
-    const py = past.getFullYear();
-    const pm = String(past.getMonth() + 1).padStart(2, "0");
-    const pd = String(past.getDate()).padStart(2, "0");
-    setDateFrom(`${py}-${pm}-${pd}`);
-    setDateTo(todayStr);
-  }
-
   function resetFilter() {
     setDateFrom("");
     setDateTo("");
@@ -358,103 +335,6 @@ export default function StatsPage() {
 
         {!loading && !error && (
           <div className="space-y-6">
-            {/* Zeitraum-Filter */}
-            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-4 sm:p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CalendarRange className="h-5 w-5 text-amber-400/80" />
-                  <h2 className="text-base font-semibold">Zeitraum</h2>
-                </div>
-                {isFilterActive && (
-                  <button
-                    type="button"
-                    onClick={resetFilter}
-                    className="text-xs text-neutral-400 transition hover:text-amber-400"
-                  >
-                    Zurücksetzen
-                  </button>
-                )}
-              </div>
-
-              <div className="mb-3 grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label
-                    htmlFor="dateFrom"
-                    className="block text-xs text-neutral-400"
-                  >
-                    Von
-                  </label>
-                  <input
-                    id="dateFrom"
-                    type="date"
-                    value={dateFrom}
-                    max={dateTo || undefined}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-50 transition focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label
-                    htmlFor="dateTo"
-                    className="block text-xs text-neutral-400"
-                  >
-                    Bis
-                  </label>
-                  <input
-                    id="dateTo"
-                    type="date"
-                    value={dateTo}
-                    min={dateFrom || undefined}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-50 transition focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyPreset("thisYear")}
-                  className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-amber-400/40 hover:text-amber-300"
-                >
-                  Dieses Jahr
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset("last90")}
-                  className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-amber-400/40 hover:text-amber-300"
-                >
-                  Letzte 90 Tage
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset("last30")}
-                  className="rounded-full border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:border-amber-400/40 hover:text-amber-300"
-                >
-                  Letzte 30 Tage
-                </button>
-              </div>
-
-              <p className="text-xs text-neutral-500">
-                {isFilterActive ? (
-                  <>
-                    <span className="text-amber-400/80 tabular-nums">
-                      {filteredSessionIds.size}
-                    </span>{" "}
-                    von{" "}
-                    <span className="tabular-nums">{sessions.length}</span>{" "}
-                    Spielabenden im gewählten Zeitraum.
-                  </>
-                ) : (
-                  <>
-                    Filter inaktiv — alle{" "}
-                    <span className="tabular-nums">{sessions.length}</span>{" "}
-                    Spielabende werden berücksichtigt.
-                  </>
-                )}
-              </p>
-            </section>
-
             <section className="space-y-4">
             {/* Reduzierte Sicht: nur im Hochformat auf kleinen Bildschirmen */}
             <div className="overflow-hidden rounded-3xl border border-neutral-800 md:hidden landscape:hidden">
@@ -667,6 +547,79 @@ export default function StatsPage() {
                 })}
               </div>
             </div>
+            </section>
+
+            {/* Zeitraum-Filter — unter dem Ranking, damit die Tabelle zuerst sichtbar ist */}
+            <section className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarRange className="h-5 w-5 text-amber-400/80" />
+                  <h2 className="text-base font-semibold">Zeitraum filtern</h2>
+                </div>
+                {isFilterActive && (
+                  <button
+                    type="button"
+                    onClick={resetFilter}
+                    className="text-xs text-neutral-400 transition hover:text-amber-400"
+                  >
+                    Zurücksetzen
+                  </button>
+                )}
+              </div>
+
+              <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="dateFrom"
+                    className="block text-xs text-neutral-400"
+                  >
+                    Von
+                  </label>
+                  <input
+                    id="dateFrom"
+                    type="date"
+                    value={dateFrom}
+                    max={dateTo || undefined}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-50 transition focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="dateTo"
+                    className="block text-xs text-neutral-400"
+                  >
+                    Bis
+                  </label>
+                  <input
+                    id="dateTo"
+                    type="date"
+                    value={dateTo}
+                    min={dateFrom || undefined}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-50 transition focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-neutral-500">
+                {isFilterActive ? (
+                  <>
+                    <span className="text-amber-400/80 tabular-nums">
+                      {filteredSessionIds.size}
+                    </span>{" "}
+                    von{" "}
+                    <span className="tabular-nums">{sessions.length}</span>{" "}
+                    Spielabenden im gewählten Zeitraum.
+                  </>
+                ) : (
+                  <>
+                    Filter inaktiv — alle{" "}
+                    <span className="tabular-nums">{sessions.length}</span>{" "}
+                    Spielabende werden berücksichtigt.
+                  </>
+                )}
+              </p>
             </section>
           </div>
         )}
